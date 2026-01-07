@@ -83,7 +83,7 @@ module SplitTestRb
       # Balance tests across nodes
       nodes = Balancer.balance(timings, options[:total_nodes])
 
-      if options[:debug]
+      unless options[:silent]
         print_debug_info(nodes)
       end
 
@@ -96,7 +96,7 @@ module SplitTestRb
       options = {
         node_index: 0,
         total_nodes: 1,
-        debug: false
+        silent: false
       }
 
       OptionParser.new do |opts|
@@ -114,8 +114,8 @@ module SplitTestRb
           options[:xml_path] = v
         end
 
-        opts.on('--debug', 'Show debug information') do
-          options[:debug] = true
+        opts.on('--silent', 'Hide debug information') do
+          options[:silent] = true
         end
 
         opts.on('-h', '--help', 'Show this help message') do

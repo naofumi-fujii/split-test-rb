@@ -77,16 +77,16 @@ RSpec.describe SplitTestRb::CLI do
       expect(options[:xml_path]).to eq('test.xml')
     end
 
-    it 'parses debug flag' do
-      options = described_class.parse_options(['--debug'])
-      expect(options[:debug]).to be true
+    it 'parses silent flag' do
+      options = described_class.parse_options(['--silent'])
+      expect(options[:silent]).to be true
     end
 
     it 'sets default values' do
       options = described_class.parse_options([])
       expect(options[:node_index]).to eq(0)
       expect(options[:total_nodes]).to eq(1)
-      expect(options[:debug]).to be false
+      expect(options[:silent]).to be false
     end
   end
 

@@ -37,7 +37,7 @@ split-test-rb --xml-path rspec-results.xml --node-index 0 --node-total 4
 - `--xml-path PATH` - Path to JUnit XML report (required)
 - `--node-index INDEX` - Current node index, 0-based (default: 0)
 - `--node-total TOTAL` - Total number of nodes (default: 1)
-- `--debug` - Show debug information with distribution details
+- `--silent` - Hide debug information (debug information is shown by default)
 - `-h, --help` - Show help message
 
 ### Example with RSpec
@@ -47,12 +47,12 @@ split-test-rb --xml-path rspec-results.xml --node-index 0 --node-total 4
 bundle exec rspec $(split-test-rb --xml-path rspec-results.xml --node-index 0 --node-total 4)
 ```
 
-### Debug Mode
+### Debug Information
 
-Use `--debug` to see how tests are distributed:
+By default, test distribution information is displayed to stderr:
 
 ```bash
-split-test-rb --xml-path rspec-results.xml --node-total 4 --debug
+split-test-rb --xml-path rspec-results.xml --node-total 4
 ```
 
 Output:
@@ -66,6 +66,12 @@ Node 1: 6 files, 12.45s total
   - spec/models/post_spec.rb
   ...
 =========================
+```
+
+Use `--silent` to hide this information:
+
+```bash
+split-test-rb --xml-path rspec-results.xml --node-total 4 --silent
 ```
 
 ## GitHub Actions Example

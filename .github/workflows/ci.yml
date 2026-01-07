@@ -76,8 +76,7 @@ jobs:
           $(bundle exec split-test-rb \
             --xml-path tmp/rspec-results.xml \
             --node-index ${{ matrix.node_index }} \
-            --node-total 10 \
-            --debug)
+            --node-total 10)
 
     - name: Upload test results
       uses: actions/upload-artifact@v4

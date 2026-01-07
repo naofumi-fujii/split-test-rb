@@ -61,6 +61,15 @@ module SplitTestRb
       # Parse JUnit XML and get timings, or use all spec files if XML doesn't exist
       if File.exist?(options[:xml_path])
         timings = JunitParser.parse(options[:xml_path])
+        # Find all spec files and add any missing ones with default weight
+        all_spec_files = find_all_spec_files
+        missing_files = all_spec_files.keys - timings.keys
+        unless missing_files.empty?
+          warn "Warning: Found #{missing_files.size} spec files not in XML, adding with default weight"
+          missing_files.each do |file|
+            timings[file] = 1.0
+          end
+        end
       else
         warn "Warning: XML file not found: #{options[:xml_path]}, using all spec files with equal weights"
         timings = find_all_spec_files

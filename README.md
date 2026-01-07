@@ -1,5 +1,7 @@
 # split-test-rb
 
+[![codecov](https://codecov.io/gh/naofumi-fujii/split-test-rb/branch/main/graph/badge.svg)](https://codecov.io/gh/naofumi-fujii/split-test-rb)
+
 A simple Ruby CLI tool to balance RSpec tests across parallel CI nodes using JUnit XML reports.
 
 ## Overview

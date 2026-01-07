@@ -8,14 +8,18 @@ split-test-rb reads JUnit XML test reports containing execution times and distri
 
 ## Installation
 
-```bash
-gem install split-test-rb
-```
+Since this gem is not yet published to RubyGems, you need to install it from GitHub.
 
-Or add to your Gemfile:
+Add to your Gemfile:
 
 ```ruby
-gem 'split-test-rb'
+gem 'split-test-rb', github: 'naofumi-fujii/split-test-rb'
+```
+
+Then run:
+
+```bash
+bundle install
 ```
 
 ## Usage
@@ -64,6 +68,15 @@ Node 1: 6 files, 12.45s total
 
 ## GitHub Actions Example
 
+First, add split-test-rb to your Gemfile:
+
+```ruby
+# Gemfile
+gem 'split-test-rb', github: 'naofumi-fujii/split-test-rb'
+```
+
+Then use this workflow configuration:
+
 ```yaml
 name: RSpec
 
@@ -81,7 +94,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          bundler-cache: true
+          bundler-cache: true  # This will install split-test-rb from GitHub
 
       - name: Download previous test results
         uses: actions/download-artifact@v4

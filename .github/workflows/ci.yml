@@ -49,12 +49,13 @@ jobs:
         ruby-version: '3.3'
         bundler-cache: true
 
-    - name: Download previous test results
-      uses: actions/download-artifact@v4
+    - name: Restore previous test results from cache
+      uses: actions/cache/restore@v4
       with:
-        name: rspec-results
-        path: tmp/
-      continue-on-error: true
+        path: tmp/rspec-results.xml
+        key: rspec-results-${{ github.ref }}
+        restore-keys: |
+          rspec-results-
 
     - name: Run tests with split-test-rb
       run: |
@@ -100,3 +101,9 @@ jobs:
       with:
         name: rspec-results
         path: tmp/rspec-results.xml
+
+    - name: Save test results to cache for next run
+      uses: actions/cache/save@v4
+      with:
+        path: tmp/rspec-results.xml
+        key: rspec-results-${{ github.ref }}

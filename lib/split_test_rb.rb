@@ -54,20 +54,20 @@ module SplitTestRb
       options = parse_options(argv)
 
       unless options[:xml_path]
-        puts 'Error: --xml-path is required'
+        warn 'Error: --xml-path is required'
         exit 1
       end
 
-      unless File.exist?(options[:xml_path])
-        puts "Error: XML file not found: #{options[:xml_path]}"
-        exit 1
+      # Parse JUnit XML and get timings, or use all spec files if XML doesn't exist
+      if File.exist?(options[:xml_path])
+        timings = JunitParser.parse(options[:xml_path])
+      else
+        warn "Warning: XML file not found: #{options[:xml_path]}, using all spec files with equal weights"
+        timings = find_all_spec_files
       end
-
-      # Parse JUnit XML and get timings
-      timings = JunitParser.parse(options[:xml_path])
 
       if timings.empty?
-        puts 'Warning: No test timings found in XML file'
+        warn 'Warning: No test files found'
         exit 0
       end
 
@@ -116,6 +116,13 @@ module SplitTestRb
       end.parse!(argv)
 
       options
+    end
+
+    def self.find_all_spec_files
+      # Find all spec files in the spec directory
+      spec_files = Dir.glob('spec/**/*_spec.rb')
+      # Assign equal weight (1.0) to each file
+      spec_files.each_with_object({}) { |file, hash| hash[file] = 1.0 }
     end
 
     def self.print_debug_info(nodes)

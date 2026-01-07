@@ -17,15 +17,20 @@ RSpec.describe SplitTestRb::CLI do
 
       expect do
         expect { described_class.run(argv) }.to raise_error(SystemExit)
-      end.to output(/Error: --xml-path is required/).to_stdout
+      end.to output(/Error: --xml-path is required/).to_stderr
     end
 
-    it 'exits with error when XML file does not exist' do
-      argv = ['--xml-path', 'nonexistent.xml']
+    it 'falls back to all spec files when XML file does not exist' do
+      argv = ['--xml-path', 'nonexistent.xml', '--node-index', '0', '--node-total', '1']
 
-      expect do
-        expect { described_class.run(argv) }.to raise_error(SystemExit)
-      end.to output(/Error: XML file not found/).to_stdout
+      stdout_output = capture_stdout do
+        capture_stderr do
+          described_class.run(argv)
+        end
+      end
+
+      # Should output spec files from the current project
+      expect(stdout_output).to match(/spec\//)
     end
 
     it 'outputs different files for different nodes' do

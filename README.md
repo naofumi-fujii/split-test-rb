@@ -94,7 +94,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          bundler-cache: true  # This will install split-test-rb from GitHub
+          bundler-cache: true
 
       - name: Download previous test results
         uses: actions/download-artifact@v4

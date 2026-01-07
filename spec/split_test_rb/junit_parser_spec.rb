@@ -67,5 +67,26 @@ RSpec.describe SplitTestRb::JunitParser do
         end
       end
     end
+
+    context 'with testcase missing file path attributes' do
+      it 'skips testcases without file or filepath attribute' do
+        Tempfile.create(['no_filepath', '.xml']) do |file|
+          file.write(<<~XML)
+            <?xml version="1.0"?>
+            <testsuites>
+              <testsuite>
+                <testcase name="some test" time="1.5"/>
+                <testcase file="spec/valid_spec.rb" time="2.0"/>
+              </testsuite>
+            </testsuites>
+          XML
+          file.rewind
+
+          timings = described_class.parse(file.path)
+          expect(timings.keys).to contain_exactly('spec/valid_spec.rb')
+          expect(timings['spec/valid_spec.rb']).to eq(2.0)
+        end
+      end
+    end
   end
 end

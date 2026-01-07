@@ -59,6 +59,86 @@ RSpec.describe SplitTestRb::CLI do
         'spec/helpers/application_helper_spec.rb'
       )
     end
+
+    it 'exits with status 0 when no test files found' do
+      Tempfile.create(['empty_dir', '.xml']) do |file|
+        file.write('<?xml version="1.0"?><testsuites></testsuites>')
+        file.rewind
+
+        # Temporarily change directory to a location without spec files
+        Dir.mktmpdir do |tmpdir|
+          Dir.chdir(tmpdir) do
+            argv = ['--xml-path', file.path, '--node-index', '0', '--node-total', '1']
+
+            expect do
+              expect { described_class.run(argv) }.to raise_error(SystemExit) { |error|
+                expect(error.status).to eq(0)
+              }
+            end.to output(/Warning: No test files found/).to_stderr
+          end
+        end
+      end
+    end
+
+    it 'outputs debug information when --debug flag is set' do
+      argv = ['--xml-path', fixture_path, '--node-index', '0', '--node-total', '2', '--debug']
+
+      stderr_output = capture_stderr do
+        capture_stdout do
+          described_class.run(argv)
+        end
+      end
+
+      expect(stderr_output).to match(/Test Distribution/)
+      expect(stderr_output).to match(/Node 0:/)
+      expect(stderr_output).to match(/Node 1:/)
+    end
+
+    it 'does not output debug information without --debug flag' do
+      argv = ['--xml-path', fixture_path, '--node-index', '0', '--node-total', '2']
+
+      stderr_output = capture_stderr do
+        capture_stdout do
+          described_class.run(argv)
+        end
+      end
+
+      expect(stderr_output).not_to match(/Test Distribution/)
+    end
+
+    it 'does not warn when all spec files are in XML' do
+      Dir.mktmpdir do |tmpdir|
+        Dir.chdir(tmpdir) do
+          # Create spec directory and files
+          FileUtils.mkdir_p('spec')
+          File.write('spec/test1_spec.rb', '# test 1')
+          File.write('spec/test2_spec.rb', '# test 2')
+
+          # Create XML containing all spec files
+          xml_path = 'test.xml'
+          File.write(xml_path, <<~XML)
+            <?xml version="1.0"?>
+            <testsuites>
+              <testsuite>
+                <testcase file="spec/test1_spec.rb" time="1.0"/>
+                <testcase file="spec/test2_spec.rb" time="2.0"/>
+              </testsuite>
+            </testsuites>
+          XML
+
+          argv = ['--xml-path', xml_path, '--node-index', '0', '--node-total', '1']
+
+          stderr_output = capture_stderr do
+            capture_stdout do
+              described_class.run(argv)
+            end
+          end
+
+          # Should not warn about missing files
+          expect(stderr_output).not_to match(/spec files not in XML/)
+        end
+      end
+    end
   end
 
   describe '.parse_options' do

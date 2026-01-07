@@ -96,12 +96,14 @@ jobs:
         with:
           bundler-cache: true
 
-      - name: Download previous test results
-        uses: actions/download-artifact@v4
+      - name: Restore test results cache
+        uses: actions/cache/restore@v4
         with:
-          name: rspec-results
-          path: tmp/
-        continue-on-error: true
+          path: tmp/rspec-results.xml
+          key: rspec-results-${{ github.ref }}-${{ github.run_id }}
+          restore-keys: |
+            rspec-results-${{ github.ref }}-
+            rspec-results-
 
       - name: Run tests
         run: |
@@ -114,12 +116,12 @@ jobs:
               --node-index ${{ matrix.node_index }} \
               --node-total 4)
 
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
+      - name: Save test results cache
+        uses: actions/cache/save@v4
         if: always()
         with:
-          name: rspec-results
           path: tmp/rspec-results.xml
+          key: rspec-results-${{ github.ref }}-${{ github.run_id }}
 ```
 
 ## Performance Comparison

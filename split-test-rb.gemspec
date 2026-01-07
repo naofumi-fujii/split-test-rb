@@ -14,4 +14,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   spec.add_dependency 'nokogiri', '~> 1.13'
+
+  spec.add_development_dependency 'rspec', '~> 3.12'
+  spec.add_development_dependency 'rspec_junit_formatter', '~> 0.6'
 end

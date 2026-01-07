@@ -96,45 +96,6 @@ The tool expects JUnit XML with `file` or `filepath` attributes on testcase elem
 
 For RSpec, use the `rspec_junit_formatter` gem to generate compatible XML reports.
 
-## Development
-
-### Running Tests
-
-This repository includes RSpec tests that demonstrate how the tool works:
-
-```bash
-# Install dependencies
-bundle install
-
-# Run all tests
-bundle exec rspec
-
-# Run specific test file
-bundle exec rspec spec/split_test_rb/balancer_spec.rb
-```
-
-Tests automatically generate a JUnit XML report at `tmp/rspec-results.xml`.
-
-### Testing the Tool with Its Own Tests
-
-You can use split-test-rb to distribute its own test suite:
-
-```bash
-# First, run tests to generate the JUnit XML report
-bundle exec rspec
-
-# View how tests would be distributed across 2 nodes (debug mode)
-bin/split-test-rb --xml-path tmp/rspec-results.xml --node-total 2 --debug
-
-# Run tests for node 0 of 2
-bundle exec rspec $(bin/split-test-rb --xml-path tmp/rspec-results.xml --node-index 0 --node-total 2)
-
-# Run tests for node 1 of 2
-bundle exec rspec $(bin/split-test-rb --xml-path tmp/rspec-results.xml --node-index 1 --node-total 2)
-```
-
-This demonstrates the tool's ability to balance test execution across multiple parallel nodes.
-
 ## License
 
 MIT

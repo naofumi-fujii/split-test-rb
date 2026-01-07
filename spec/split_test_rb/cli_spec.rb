@@ -92,11 +92,13 @@ RSpec.describe SplitTestRb::CLI do
         { files: ['spec/c_spec.rb'], total_time: 3.2 }
       ]
 
-      expect do
+      output = capture_stderr do
         described_class.print_debug_info(nodes)
-      end.to output(/Test Distribution/).to_stderr
-        .and output(/Node 0: 2 files, 5.5s total/).to_stderr
-        .and output(/Node 1: 1 files, 3.2s total/).to_stderr
+      end
+
+      expect(output).to match(/Test Distribution/)
+      expect(output).to match(/Node 0: 2 files, 5\.5s total/)
+      expect(output).to match(/Node 1: 1 files, 3\.2s total/)
     end
   end
 
@@ -107,5 +109,14 @@ RSpec.describe SplitTestRb::CLI do
     $stdout.string
   ensure
     $stdout = original_stdout
+  end
+
+  def capture_stderr
+    original_stderr = $stderr
+    $stderr = StringIO.new
+    yield
+    $stderr.string
+  ensure
+    $stderr = original_stderr
   end
 end

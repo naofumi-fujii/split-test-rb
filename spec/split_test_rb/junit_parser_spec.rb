@@ -22,13 +22,13 @@ RSpec.describe SplitTestRb::JunitParser do
       timings = described_class.parse(fixture_path)
 
       # user_spec.rb has 2 test cases: 2.5s + 1.8s = 4.3s
-      expect(timings['spec/models/user_spec.rb']).to eq(4.3)
+      expect(timings['spec/models/user_spec.rb']).to be_within(0.001).of(4.3)
 
       # post_spec.rb has 2 test cases: 3.2s + 2.1s = 5.3s
-      expect(timings['spec/models/post_spec.rb']).to eq(5.3)
+      expect(timings['spec/models/post_spec.rb']).to be_within(0.001).of(5.3)
 
       # application_helper_spec.rb has 2 test cases: 0.5s + 0.5s = 1.0s
-      expect(timings['spec/helpers/application_helper_spec.rb']).to eq(1.0)
+      expect(timings['spec/helpers/application_helper_spec.rb']).to be_within(0.001).of(1.0)
     end
 
     it 'handles files with single test case' do

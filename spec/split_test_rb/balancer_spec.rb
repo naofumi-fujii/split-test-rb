@@ -49,7 +49,7 @@ RSpec.describe SplitTestRb::Balancer do
 
       expect(nodes.size).to eq(1)
       expect(nodes[0][:files]).to contain_exactly(*timings.keys)
-      expect(nodes[0][:total_time]).to eq(timings.values.sum)
+      expect(nodes[0][:total_time]).to be_within(0.001).of(timings.values.sum)
     end
 
     it 'handles more nodes than files' do

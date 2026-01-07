@@ -75,6 +75,7 @@ First, add split-test-rb to your Gemfile:
 gem 'split-test-rb', github: 'naofumi-fujii/split-test-rb'
 ```
 
+This project has real running example:
 - [.github/workflows/ci.yml](https://github.com/naofumi-fujii/split-test-rb/blob/main/.github/workflows/ci.yml)
 
 ## How It Works

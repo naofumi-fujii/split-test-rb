@@ -75,54 +75,7 @@ First, add split-test-rb to your Gemfile:
 gem 'split-test-rb', github: 'naofumi-fujii/split-test-rb'
 ```
 
-Then use this workflow configuration:
-
-```yaml
-name: RSpec
-
-on: [push]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node_index: [0, 1, 2, 3]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          bundler-cache: true
-
-      - name: Restore test results cache
-        uses: actions/cache/restore@v4
-        with:
-          path: tmp/rspec-results.xml
-          key: rspec-results-${{ github.ref }}-${{ github.run_id }}
-          restore-keys: |
-            rspec-results-${{ github.ref }}-
-            rspec-results-
-
-      - name: Run tests
-        run: |
-          bundle exec rspec \
-            --format progress \
-            --format RspecJunitFormatter \
-            --out tmp/rspec-results.xml \
-            $(bundle exec split-test-rb \
-              --xml-path tmp/rspec-results.xml \
-              --node-index ${{ matrix.node_index }} \
-              --node-total 4)
-
-      - name: Save test results cache
-        uses: actions/cache/save@v4
-        if: always()
-        with:
-          path: tmp/rspec-results.xml
-          key: rspec-results-${{ github.ref }}-${{ github.run_id }}
-```
+- [.github/workflows/ci.yml](https://github.com/naofumi-fujii/split-test-rb/blob/main/.github/workflows/ci.yml)
 
 ## Performance Comparison
 

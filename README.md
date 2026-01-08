@@ -86,6 +86,30 @@ This project has real running example:
 2. **Greedy Balancing**: Sorts files by execution time (descending) and assigns each file to the node with the lowest cumulative time
 3. **Output**: Prints the list of test files for the specified node
 
+## Fallback Behavior
+
+split-test-rb provides intelligent fallback handling to ensure tests can run even without historical timing data:
+
+### When XML file doesn't exist
+If the specified XML file is not found, the tool will:
+- Display a warning: `Warning: XML file not found: <path>, using all spec files with equal weights`
+- Find all spec files matching `spec/**/*_spec.rb`
+- Assign equal execution time (1.0 seconds) to each file
+- Distribute them evenly across nodes
+
+This is useful for:
+- First-time runs when no test history exists yet
+- Local development environments
+- New CI pipelines
+
+### When spec files are missing from XML
+If new spec files exist that aren't in the XML report, the tool will:
+- Display a warning: `Warning: Found N spec files not in XML, adding with default weight`
+- Add the missing files with default execution time (1.0 seconds)
+- Include them in the distribution
+
+This ensures newly added test files are always included in the test run.
+
 ## JUnit XML Format
 
 The tool expects JUnit XML with `file` or `filepath` attributes on testcase elements:

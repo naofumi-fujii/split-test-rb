@@ -34,7 +34,7 @@ split-test-rb --xml-path rspec-results.xml --node-index 0 --node-total 4
 
 ### Options
 
-- `--xml-path PATH` - Path to JUnit XML report (required)
+- `--xml-path PATH` - Path to JUnit XML report file or directory containing XML files (required)
 - `--node-index INDEX` - Current node index, 0-based (default: 0)
 - `--node-total TOTAL` - Total number of nodes (default: 1)
 - `--debug` - Show debug information with distribution details
@@ -82,7 +82,10 @@ This project has real running example:
 
 ## How It Works
 
-1. **Parse JUnit XML**: Extracts test file paths and execution times from the XML report
+1. **Parse JUnit XML**: Extracts test file paths and execution times from XML report(s)
+   - Accepts a single XML file or a directory containing multiple XML files
+   - When a directory is specified, all `.xml` files in that directory are processed
+   - Execution times are aggregated across all files
 2. **Greedy Balancing**: Sorts files by execution time (descending) and assigns each file to the node with the lowest cumulative time
 3. **Output**: Prints the list of test files for the specified node
 

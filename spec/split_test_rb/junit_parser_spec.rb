@@ -117,6 +117,54 @@ RSpec.describe SplitTestRb::JunitParser do
         end
       end
     end
+
+    context 'with directory containing multiple XML files' do
+      it 'aggregates timings from all XML files in directory' do
+        Dir.mktmpdir do |dir|
+          # Create first XML file
+          File.write(File.join(dir, 'results-0.xml'), <<~XML)
+            <?xml version="1.0"?>
+            <testsuites>
+              <testsuite>
+                <testcase file="spec/example1_spec.rb" time="1.0"/>
+                <testcase file="spec/example2_spec.rb" time="2.0"/>
+              </testsuite>
+            </testsuites>
+          XML
+
+          # Create second XML file
+          File.write(File.join(dir, 'results-1.xml'), <<~XML)
+            <?xml version="1.0"?>
+            <testsuites>
+              <testsuite>
+                <testcase file="spec/example3_spec.rb" time="3.0"/>
+                <testcase file="spec/example1_spec.rb" time="0.5"/>
+              </testsuite>
+            </testsuites>
+          XML
+
+          timings = described_class.parse(dir)
+
+          # Should aggregate timings from both files
+          expect(timings.keys).to contain_exactly(
+            'spec/example1_spec.rb',
+            'spec/example2_spec.rb',
+            'spec/example3_spec.rb'
+          )
+          # example1_spec.rb appears in both files: 1.0 + 0.5 = 1.5
+          expect(timings['spec/example1_spec.rb']).to eq(1.5)
+          expect(timings['spec/example2_spec.rb']).to eq(2.0)
+          expect(timings['spec/example3_spec.rb']).to eq(3.0)
+        end
+      end
+
+      it 'returns empty hash for directory with no XML files' do
+        Dir.mktmpdir do |dir|
+          timings = described_class.parse(dir)
+          expect(timings).to eq({})
+        end
+      end
+    end
   end
 
   describe '.normalize_path' do

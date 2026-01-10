@@ -5,10 +5,28 @@ require 'set'
 module SplitTestRb
   # Parses JUnit XML files and extracts test timing data
   class JunitParser
-    # Parses JUnit XML file and returns hash of {file_path => execution_time}
+    # Parses JUnit XML file(s) and returns hash of {file_path => execution_time}
+    # Accepts either a single XML file path or a directory containing XML files
     def self.parse(xml_path)
-      doc = File.open(xml_path) { |f| Nokogiri::XML(f) }
+      files = if File.directory?(xml_path)
+                Dir.glob(File.join(xml_path, '*.xml')).sort
+              elsif File.file?(xml_path)
+                [xml_path]
+              else
+                []
+              end
+
       timings = {}
+      files.each do |file|
+        parse_file(file, timings)
+      end
+
+      timings
+    end
+
+    # Parses a single JUnit XML file and aggregates timings into the provided hash
+    def self.parse_file(xml_path, timings = {})
+      doc = File.open(xml_path) { |f| Nokogiri::XML(f) }
 
       doc.xpath('//testcase').each do |testcase|
         # Try different attribute names for file path
@@ -70,7 +88,21 @@ module SplitTestRb
       # Parse JUnit XML and get timings, or use all spec files if XML doesn't exist
       default_files = Set.new
       if File.exist?(options[:xml_path])
+        # Show which XML files will be processed if it's a directory
+        if File.directory?(options[:xml_path])
+          xml_files = Dir.glob(File.join(options[:xml_path], '*.xml')).sort
+          if options[:debug]
+            if xml_files.empty?
+              warn "Info: No XML files found in #{options[:xml_path]}"
+            else
+              warn "Info: Loading timing data from #{xml_files.size} XML file(s):"
+              xml_files.each { |f| warn "  - #{File.basename(f)}" }
+            end
+          end
+        end
+
         timings = JunitParser.parse(options[:xml_path])
+
         # Find all spec files and add any missing ones with default weight
         all_spec_files = find_all_spec_files
         missing_files = all_spec_files.keys - timings.keys
@@ -82,7 +114,7 @@ module SplitTestRb
           end
         end
       else
-        warn "Warning: XML file not found: #{options[:xml_path]}, using all spec files with equal weights"
+        warn "Warning: XML path not found: #{options[:xml_path]}, using all spec files with equal weights"
         timings = find_all_spec_files
         default_files = Set.new(timings.keys)
       end
@@ -122,7 +154,7 @@ module SplitTestRb
           options[:total_nodes] = v
         end
 
-        opts.on('--xml-path PATH', 'Path to JUnit XML report') do |v|
+        opts.on('--xml-path PATH', 'Path to JUnit XML report file or directory') do |v|
           options[:xml_path] = v
         end
 

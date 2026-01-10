@@ -63,7 +63,7 @@ jobs:
     - name: Restore previous test results from cache
       uses: actions/cache/restore@v5
       with:
-        path: tmp/rspec-results.xml
+        path: tmp/cache/
         key: rspec-results-${{ github.ref }}
         restore-keys: |
           rspec-results-refs/heads/main
@@ -71,13 +71,13 @@ jobs:
 
     - name: Run tests with split-test-rb
       run: |
-        mkdir -p tmp
+        mkdir -p tmp/results
         bundle exec rspec \
           --format progress \
           --format RspecJunitFormatter \
-          --out tmp/rspec-results-${{ matrix.node_index }}.xml \
+          --out tmp/results/rspec-results-${{ matrix.node_index }}.xml \
           $(bundle exec split-test-rb \
-            --xml-path tmp/rspec-results.xml \
+            --xml-path tmp/cache \
             --node-index ${{ matrix.node_index }} \
             --node-total 5 \
             --debug)
@@ -87,7 +87,7 @@ jobs:
       if: always()
       with:
         name: rspec-results-node-${{ matrix.node_index }}
-        path: tmp/rspec-results-${{ matrix.node_index }}.xml
+        path: tmp/results/rspec-results-${{ matrix.node_index }}.xml
 
   merge-test-results:
     runs-on: ubuntu-latest
@@ -103,19 +103,14 @@ jobs:
         path: tmp/results/
         merge-multiple: true
 
-    - name: Merge test results
-      run: |
-        # Merge all XML files into one for next run
-        cat tmp/results/rspec-results-*.xml > tmp/rspec-results.xml || echo "<testsuites></testsuites>" > tmp/rspec-results.xml
-
     - name: Upload merged test results
       uses: actions/upload-artifact@v6
       with:
-        name: rspec-results
-        path: tmp/rspec-results.xml
+        name: rspec-results-all
+        path: tmp/results/
 
     - name: Save test results to cache for next run
       uses: actions/cache/save@v5
       with:
-        path: tmp/rspec-results.xml
+        path: tmp/results/
         key: rspec-results-${{ github.ref }}

@@ -28,6 +28,38 @@ module SplitTestRb
       timings
     end
 
+    # Parses all XML files in a directory and merges results
+    def self.parse_directory(dir_path)
+      xml_files = Dir.glob(File.join(dir_path, '**', '*.xml'))
+      parse_files(xml_files)
+    end
+
+    # Parses multiple XML files and merges results
+    def self.parse_files(xml_paths)
+      timings = {}
+
+      xml_paths.each do |xml_path|
+        next unless File.exist?(xml_path)
+
+        file_timings = parse(xml_path)
+        file_timings.each do |file, time|
+          timings[file] ||= 0
+          timings[file] += time
+        end
+      end
+
+      timings
+    end
+
+    # Parses a path that can be either a file or directory
+    def self.parse_path(path)
+      if File.directory?(path)
+        parse_directory(path)
+      else
+        parse(path)
+      end
+    end
+
     # Normalizes file path by removing leading ./
     def self.normalize_path(path)
       path.sub(/^\.\//, '')
@@ -69,8 +101,9 @@ module SplitTestRb
 
       # Parse JUnit XML and get timings, or use all spec files if XML doesn't exist
       default_files = Set.new
-      if File.exist?(options[:xml_path])
-        timings = JunitParser.parse(options[:xml_path])
+      xml_path = options[:xml_path]
+      if File.exist?(xml_path) || File.directory?(xml_path)
+        timings = JunitParser.parse_path(xml_path)
         # Find all spec files and add any missing ones with default weight
         all_spec_files = find_all_spec_files
         missing_files = all_spec_files.keys - timings.keys

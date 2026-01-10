@@ -1,11 +1,11 @@
 require 'spec_helper'
 
 RSpec.describe SplitTestRb::CLI do
-  let(:fixture_path) { File.expand_path('../fixtures/sample_junit.xml', __dir__) }
+  let(:fixture_dir) { File.expand_path('../fixtures', __dir__) }
 
   describe '.run' do
     it 'outputs files for specified node' do
-      argv = ['--xml-path', fixture_path, '--node-index', '0', '--node-total', '2']
+      argv = ['--xml-path', fixture_dir, '--node-index', '0', '--node-total', '2']
 
       expect do
         described_class.run(argv)
@@ -20,8 +20,8 @@ RSpec.describe SplitTestRb::CLI do
       end.to output(/Error: --xml-path is required/).to_stderr
     end
 
-    it 'falls back to all spec files when XML file does not exist' do
-      argv = ['--xml-path', 'nonexistent.xml', '--node-index', '0', '--node-total', '1']
+    it 'falls back to all spec files when XML directory does not exist' do
+      argv = ['--xml-path', 'nonexistent_dir', '--node-index', '0', '--node-total', '1']
 
       stdout_output = capture_stdout do
         capture_stderr do
@@ -35,11 +35,11 @@ RSpec.describe SplitTestRb::CLI do
 
     it 'outputs different files for different nodes' do
       node0_output = capture_stdout do
-        described_class.run(['--xml-path', fixture_path, '--node-index', '0', '--node-total', '2'])
+        described_class.run(['--xml-path', fixture_dir, '--node-index', '0', '--node-total', '2'])
       end
 
       node1_output = capture_stdout do
-        described_class.run(['--xml-path', fixture_path, '--node-index', '1', '--node-total', '2'])
+        described_class.run(['--xml-path', fixture_dir, '--node-index', '1', '--node-total', '2'])
       end
 
       node0_files = node0_output.strip.split("\n")
@@ -61,27 +61,27 @@ RSpec.describe SplitTestRb::CLI do
     end
 
     it 'exits with status 0 when no test files found' do
-      Tempfile.create(['empty_dir', '.xml']) do |file|
-        file.write('<?xml version="1.0"?><testsuites></testsuites>')
-        file.rewind
+      # Temporarily change directory to a location without spec files
+      Dir.mktmpdir do |tmpdir|
+        Dir.chdir(tmpdir) do
+          # Create empty XML directory
+          xml_dir = File.join(tmpdir, 'xml_results')
+          FileUtils.mkdir_p(xml_dir)
+          File.write(File.join(xml_dir, 'empty.xml'), '<?xml version="1.0"?><testsuites></testsuites>')
 
-        # Temporarily change directory to a location without spec files
-        Dir.mktmpdir do |tmpdir|
-          Dir.chdir(tmpdir) do
-            argv = ['--xml-path', file.path, '--node-index', '0', '--node-total', '1']
+          argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1']
 
-            expect do
-              expect { described_class.run(argv) }.to raise_error(SystemExit) { |error|
-                expect(error.status).to eq(0)
-              }
-            end.to output(/Warning: No test files found/).to_stderr
-          end
+          expect do
+            expect { described_class.run(argv) }.to raise_error(SystemExit) { |error|
+              expect(error.status).to eq(0)
+            }
+          end.to output(/Warning: No test files found/).to_stderr
         end
       end
     end
 
     it 'outputs debug information when --debug flag is set' do
-      argv = ['--xml-path', fixture_path, '--node-index', '0', '--node-total', '2', '--debug']
+      argv = ['--xml-path', fixture_dir, '--node-index', '0', '--node-total', '2', '--debug']
 
       stderr_output = capture_stderr do
         capture_stdout do
@@ -95,7 +95,7 @@ RSpec.describe SplitTestRb::CLI do
     end
 
     it 'does not output debug information without --debug flag' do
-      argv = ['--xml-path', fixture_path, '--node-index', '0', '--node-total', '2']
+      argv = ['--xml-path', fixture_dir, '--node-index', '0', '--node-total', '2']
 
       stderr_output = capture_stderr do
         capture_stdout do
@@ -114,9 +114,10 @@ RSpec.describe SplitTestRb::CLI do
           File.write('spec/test1_spec.rb', '# test 1')
           File.write('spec/test2_spec.rb', '# test 2')
 
-          # Create XML containing all spec files
-          xml_path = 'test.xml'
-          File.write(xml_path, <<~XML)
+          # Create XML directory containing all spec files
+          xml_dir = 'xml_results'
+          FileUtils.mkdir_p(xml_dir)
+          File.write(File.join(xml_dir, 'test.xml'), <<~XML)
             <?xml version="1.0"?>
             <testsuites>
               <testsuite>
@@ -126,7 +127,7 @@ RSpec.describe SplitTestRb::CLI do
             </testsuites>
           XML
 
-          argv = ['--xml-path', xml_path, '--node-index', '0', '--node-total', '1']
+          argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1']
 
           stderr_output = capture_stderr do
             capture_stdout do

@@ -96,6 +96,12 @@ jobs:
     steps:
     - uses: actions/checkout@v6
 
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.3'
+        bundler-cache: true
+
     - name: Download all test results
       uses: actions/download-artifact@v7
       with:
@@ -105,8 +111,13 @@ jobs:
 
     - name: Merge test results
       run: |
-        # Merge all XML files into one for next run
-        cat tmp/results/rspec-results-*.xml > tmp/rspec-results.xml || echo "<testsuites></testsuites>" > tmp/rspec-results.xml
+        # Merge all XML files into one for next run using proper XML merging
+        mkdir -p tmp
+        if ls tmp/results/rspec-results-*.xml 1> /dev/null 2>&1; then
+          bundle exec bin/merge-junit-xml tmp/rspec-results.xml tmp/results/rspec-results-*.xml
+        else
+          echo "<testsuites></testsuites>" > tmp/rspec-results.xml
+        fi
 
     - name: Upload merged test results
       uses: actions/upload-artifact@v6

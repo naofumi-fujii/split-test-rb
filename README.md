@@ -80,6 +80,22 @@ gem 'split-test-rb', github: 'naofumi-fujii/split-test-rb'
 This project has real running example:
 - [.github/workflows/ci.yml](https://github.com/naofumi-fujii/split-test-rb/blob/main/.github/workflows/ci.yml)
 
+### Important: Merging Parallel Test Results
+
+When running tests in parallel, each node generates its own JUnit XML file. These must be **properly merged** (not just concatenated) before being used for the next test run.
+
+**❌ Wrong approach (loses test data):**
+```bash
+cat tmp/results/*.xml > merged.xml  # This creates invalid XML!
+```
+
+**✅ Correct approach:**
+```bash
+bundle exec bin/merge-junit-xml merged.xml tmp/results/*.xml
+```
+
+The `merge-junit-xml` utility properly combines multiple JUnit XML files into a single valid XML document, preserving all test timing data across nodes.
+
 ## How It Works
 
 1. **Parse JUnit XML**: Extracts test file paths and execution times from the XML report

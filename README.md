@@ -24,8 +24,6 @@ Then run:
 bundle install
 ```
 
-## Usage
-
 ## GitHub Actions Example
 
 First, add split-test-rb to your Gemfile:

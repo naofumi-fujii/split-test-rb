@@ -28,6 +28,33 @@ module SplitTestRb
       timings
     end
 
+    # Parses multiple JUnit XML files from a directory and merges timing data
+    # Returns hash of {file_path => execution_time} with aggregated times
+    def self.parse_directory(xml_dir)
+      xml_files = Dir.glob(File.join(xml_dir, '*.xml')).sort
+
+      if xml_files.empty?
+        warn "Warning: No XML files found in directory: #{xml_dir}"
+        return {}
+      end
+
+      timings = {}
+      xml_files.each do |xml_file|
+        begin
+          file_timings = parse(xml_file)
+          # Merge timings, summing times for files that appear in multiple XMLs
+          file_timings.each do |file_path, time|
+            timings[file_path] ||= 0
+            timings[file_path] += time
+          end
+        rescue => e
+          warn "Warning: Failed to parse #{xml_file}: #{e.message}, skipping"
+        end
+      end
+
+      timings
+    end
+
     # Normalizes file path by removing leading ./
     def self.normalize_path(path)
       path.sub(/^\.\//, '')
@@ -62,29 +89,49 @@ module SplitTestRb
     def self.run(argv)
       options = parse_options(argv)
 
-      unless options[:xml_path]
-        warn 'Error: --xml-path is required'
+      unless options[:xml_path] || options[:xml_dir]
+        warn 'Error: Either --xml-path or --xml-dir is required'
+        exit 1
+      end
+
+      if options[:xml_path] && options[:xml_dir]
+        warn 'Error: Cannot specify both --xml-path and --xml-dir'
         exit 1
       end
 
       # Parse JUnit XML and get timings, or use all spec files if XML doesn't exist
       default_files = Set.new
-      if File.exist?(options[:xml_path])
-        timings = JunitParser.parse(options[:xml_path])
-        # Find all spec files and add any missing ones with default weight
-        all_spec_files = find_all_spec_files
-        missing_files = all_spec_files.keys - timings.keys
-        unless missing_files.empty?
-          warn "Warning: Found #{missing_files.size} spec files not in XML, adding with default weight"
-          missing_files.each do |file|
-            timings[file] = 1.0
-            default_files.add(file)
-          end
+      timings = {}
+
+      if options[:xml_dir]
+        # Parse all XML files from directory
+        if Dir.exist?(options[:xml_dir])
+          timings = JunitParser.parse_directory(options[:xml_dir])
+        else
+          warn "Warning: XML directory not found: #{options[:xml_dir]}, using all spec files with equal weights"
+          timings = find_all_spec_files
+          default_files = Set.new(timings.keys)
         end
-      else
-        warn "Warning: XML file not found: #{options[:xml_path]}, using all spec files with equal weights"
-        timings = find_all_spec_files
-        default_files = Set.new(timings.keys)
+      elsif options[:xml_path]
+        # Parse single XML file
+        if File.exist?(options[:xml_path])
+          timings = JunitParser.parse(options[:xml_path])
+        else
+          warn "Warning: XML file not found: #{options[:xml_path]}, using all spec files with equal weights"
+          timings = find_all_spec_files
+          default_files = Set.new(timings.keys)
+        end
+      end
+
+      # Find all spec files and add any missing ones with default weight
+      all_spec_files = find_all_spec_files
+      missing_files = all_spec_files.keys - timings.keys
+      unless missing_files.empty?
+        warn "Warning: Found #{missing_files.size} spec files not in XML, adding with default weight"
+        missing_files.each do |file|
+          timings[file] = 1.0
+          default_files.add(file)
+        end
       end
 
       if timings.empty?
@@ -124,6 +171,10 @@ module SplitTestRb
 
         opts.on('--xml-path PATH', 'Path to JUnit XML report') do |v|
           options[:xml_path] = v
+        end
+
+        opts.on('--xml-dir DIR', 'Directory containing JUnit XML reports') do |v|
+          options[:xml_dir] = v
         end
 
         opts.on('--debug', 'Show debug information') do

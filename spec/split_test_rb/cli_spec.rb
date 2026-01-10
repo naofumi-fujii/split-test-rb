@@ -17,7 +17,15 @@ RSpec.describe SplitTestRb::CLI do
 
       expect do
         expect { described_class.run(argv) }.to raise_error(SystemExit)
-      end.to output(/Error: --xml-path is required/).to_stderr
+      end.to output(/Error: Either --xml-path or --xml-dir is required/).to_stderr
+    end
+
+    it 'exits with error when both xml-path and xml-dir are specified' do
+      argv = ['--xml-path', fixture_path, '--xml-dir', 'tmp/results']
+
+      expect do
+        expect { described_class.run(argv) }.to raise_error(SystemExit)
+      end.to output(/Error: Cannot specify both --xml-path and --xml-dir/).to_stderr
     end
 
     it 'falls back to all spec files when XML file does not exist' do
@@ -139,6 +147,75 @@ RSpec.describe SplitTestRb::CLI do
         end
       end
     end
+
+    it 'merges multiple XML files when using --xml-dir' do
+      Dir.mktmpdir do |tmpdir|
+        Dir.chdir(tmpdir) do
+          # Create spec directory and files
+          FileUtils.mkdir_p('spec')
+          File.write('spec/test1_spec.rb', '# test 1')
+          File.write('spec/test2_spec.rb', '# test 2')
+          File.write('spec/test3_spec.rb', '# test 3')
+
+          # Create XML directory with multiple files
+          xml_dir = 'tmp/results'
+          FileUtils.mkdir_p(xml_dir)
+
+          File.write("#{xml_dir}/results-0.xml", <<~XML)
+            <?xml version="1.0"?>
+            <testsuites>
+              <testsuite>
+                <testcase file="spec/test1_spec.rb" time="5.0"/>
+              </testsuite>
+            </testsuites>
+          XML
+
+          File.write("#{xml_dir}/results-1.xml", <<~XML)
+            <?xml version="1.0"?>
+            <testsuites>
+              <testsuite>
+                <testcase file="spec/test2_spec.rb" time="3.0"/>
+              </testsuite>
+            </testsuites>
+          XML
+
+          File.write("#{xml_dir}/results-2.xml", <<~XML)
+            <?xml version="1.0"?>
+            <testsuites>
+              <testsuite>
+                <testcase file="spec/test3_spec.rb" time="2.0"/>
+              </testsuite>
+            </testsuites>
+          XML
+
+          argv = ['--xml-dir', xml_dir, '--node-index', '0', '--node-total', '2', '--debug']
+
+          stderr_output = capture_stderr do
+            capture_stdout do
+              described_class.run(argv)
+            end
+          end
+
+          # Should not warn about missing files since all are in XMLs
+          expect(stderr_output).not_to match(/spec files not in XML/)
+          # Should show merged timing data
+          expect(stderr_output).to match(/Test Distribution/)
+        end
+      end
+    end
+
+    it 'falls back to all spec files when XML directory does not exist' do
+      argv = ['--xml-dir', 'nonexistent_dir', '--node-index', '0', '--node-total', '1']
+
+      stdout_output = capture_stdout do
+        capture_stderr do
+          described_class.run(argv)
+        end
+      end
+
+      # Should output spec files from the current project
+      expect(stdout_output).to match(/spec\//)
+    end
   end
 
   describe '.parse_options' do
@@ -155,6 +232,11 @@ RSpec.describe SplitTestRb::CLI do
     it 'parses xml-path option' do
       options = described_class.parse_options(['--xml-path', 'test.xml'])
       expect(options[:xml_path]).to eq('test.xml')
+    end
+
+    it 'parses xml-dir option' do
+      options = described_class.parse_options(['--xml-dir', 'tmp/results'])
+      expect(options[:xml_dir]).to eq('tmp/results')
     end
 
     it 'parses debug flag' do

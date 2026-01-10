@@ -34,11 +34,14 @@ split-test-rb --xml-path rspec-results.xml --node-index 0 --node-total 4
 
 ### Options
 
-- `--xml-path PATH` - Path to JUnit XML report (required)
+- `--xml-path PATH` - Path to single JUnit XML report (required if --xml-dir not specified)
+- `--xml-dir DIR` - Directory containing multiple JUnit XML reports (required if --xml-path not specified)
 - `--node-index INDEX` - Current node index, 0-based (default: 0)
 - `--node-total TOTAL` - Total number of nodes (default: 1)
 - `--debug` - Show debug information with distribution details
 - `-h, --help` - Show help message
+
+**Note:** Either `--xml-path` or `--xml-dir` must be specified, but not both.
 
 ### Example with RSpec
 
@@ -80,21 +83,22 @@ gem 'split-test-rb', github: 'naofumi-fujii/split-test-rb'
 This project has real running example:
 - [.github/workflows/ci.yml](https://github.com/naofumi-fujii/split-test-rb/blob/main/.github/workflows/ci.yml)
 
-### Important: Merging Parallel Test Results
+### Parallel Test Results with --xml-dir
 
-When running tests in parallel, each node generates its own JUnit XML file. These must be **properly merged** (not just concatenated) before being used for the next test run.
+When running tests in parallel, each node generates its own JUnit XML file. Use `--xml-dir` to automatically read and merge timing data from multiple XML files:
 
-**❌ Wrong approach (loses test data):**
 ```bash
-cat tmp/results/*.xml > merged.xml  # This creates invalid XML!
+# Each parallel node outputs to the same directory
+bundle exec rspec \
+  --format RspecJunitFormatter \
+  --out tmp/results/rspec-results-${NODE_INDEX}.xml \
+  $(split-test-rb --xml-dir tmp/results --node-index ${NODE_INDEX} --node-total 5)
 ```
 
-**✅ Correct approach:**
-```bash
-bundle exec bin/merge-junit-xml merged.xml tmp/results/*.xml
-```
-
-The `merge-junit-xml` utility properly combines multiple JUnit XML files into a single valid XML document, preserving all test timing data across nodes.
+**Benefits:**
+- No manual XML merging required
+- Automatically aggregates timing data from all previous test runs
+- Simplifies CI/CD workflows
 
 ## How It Works
 

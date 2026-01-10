@@ -119,6 +119,128 @@ RSpec.describe SplitTestRb::JunitParser do
     end
   end
 
+  describe '.parse_directory' do
+    it 'merges multiple XML files from directory' do
+      Dir.mktmpdir do |dir|
+        # Create multiple XML files
+        File.write("#{dir}/results-0.xml", <<~XML)
+          <?xml version="1.0"?>
+          <testsuites>
+            <testsuite>
+              <testcase file="spec/test1_spec.rb" time="5.0"/>
+              <testcase file="spec/test2_spec.rb" time="3.0"/>
+            </testsuite>
+          </testsuites>
+        XML
+
+        File.write("#{dir}/results-1.xml", <<~XML)
+          <?xml version="1.0"?>
+          <testsuites>
+            <testsuite>
+              <testcase file="spec/test3_spec.rb" time="2.0"/>
+              <testcase file="spec/test4_spec.rb" time="4.0"/>
+            </testsuite>
+          </testsuites>
+        XML
+
+        timings = described_class.parse_directory(dir)
+
+        expect(timings.keys).to contain_exactly(
+          'spec/test1_spec.rb',
+          'spec/test2_spec.rb',
+          'spec/test3_spec.rb',
+          'spec/test4_spec.rb'
+        )
+        expect(timings['spec/test1_spec.rb']).to eq(5.0)
+        expect(timings['spec/test2_spec.rb']).to eq(3.0)
+        expect(timings['spec/test3_spec.rb']).to eq(2.0)
+        expect(timings['spec/test4_spec.rb']).to eq(4.0)
+      end
+    end
+
+    it 'aggregates timings for files appearing in multiple XMLs' do
+      Dir.mktmpdir do |dir|
+        # Create multiple XML files with overlapping files
+        File.write("#{dir}/results-0.xml", <<~XML)
+          <?xml version="1.0"?>
+          <testsuites>
+            <testsuite>
+              <testcase file="spec/test1_spec.rb" time="2.0"/>
+            </testsuite>
+          </testsuites>
+        XML
+
+        File.write("#{dir}/results-1.xml", <<~XML)
+          <?xml version="1.0"?>
+          <testsuites>
+            <testsuite>
+              <testcase file="spec/test1_spec.rb" time="3.0"/>
+            </testsuite>
+          </testsuites>
+        XML
+
+        timings = described_class.parse_directory(dir)
+
+        # Should sum timings from both files
+        expect(timings['spec/test1_spec.rb']).to eq(5.0)
+      end
+    end
+
+    it 'returns empty hash for directory with no XML files' do
+      Dir.mktmpdir do |dir|
+        # Create some non-XML files
+        File.write("#{dir}/not_xml.txt", 'not an xml file')
+
+        expect do
+          timings = described_class.parse_directory(dir)
+          expect(timings).to eq({})
+        end.to output(/Warning: No XML files found/).to_stderr
+      end
+    end
+
+    it 'skips invalid XML files and continues parsing' do
+      Dir.mktmpdir do |dir|
+        # Create valid XML
+        File.write("#{dir}/valid.xml", <<~XML)
+          <?xml version="1.0"?>
+          <testsuites>
+            <testsuite>
+              <testcase file="spec/test1_spec.rb" time="1.0"/>
+            </testsuite>
+          </testsuites>
+        XML
+
+        # Create invalid XML
+        File.write("#{dir}/invalid.xml", 'not valid xml')
+
+        # Create another valid XML
+        File.write("#{dir}/valid2.xml", <<~XML)
+          <?xml version="1.0"?>
+          <testsuites>
+            <testsuite>
+              <testcase file="spec/test2_spec.rb" time="2.0"/>
+            </testsuite>
+          </testsuites>
+        XML
+
+        expect do
+          timings = described_class.parse_directory(dir)
+
+          # Should still parse valid files
+          expect(timings.keys).to contain_exactly(
+            'spec/test1_spec.rb',
+            'spec/test2_spec.rb'
+          )
+        end.to output(/Warning: Failed to parse/).to_stderr
+      end
+    end
+
+    it 'returns empty hash for non-existent directory' do
+      timings = described_class.parse_directory('/nonexistent/directory')
+      expect(timings).to eq({})
+    end
+  end
+
   describe '.normalize_path' do
     it 'removes leading ./ from paths' do
       expect(described_class.normalize_path('./spec/models/user_spec.rb')).to eq('spec/models/user_spec.rb')

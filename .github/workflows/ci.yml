@@ -59,11 +59,11 @@ jobs:
         bundler-cache: true
 
     # Restore previous test results for optimal test distribution
-    # Priority: 1) Current branch cache, 2) Main branch cache (for first PR run), 3) Any other branch
+    # Downloads all XML files from previous run into tmp/results/
     - name: Restore previous test results from cache
       uses: actions/cache/restore@v5
       with:
-        path: tmp/rspec-results.xml
+        path: tmp/results/
         key: rspec-results-${{ github.ref }}
         restore-keys: |
           rspec-results-refs/heads/main
@@ -71,37 +71,30 @@ jobs:
 
     - name: Run tests with split-test-rb
       run: |
-        mkdir -p tmp
+        mkdir -p tmp/results
+        # Use --xml-dir to read all previous test results
         bundle exec rspec \
           --format progress \
           --format RspecJunitFormatter \
-          --out tmp/rspec-results-${{ matrix.node_index }}.xml \
+          --out tmp/results/rspec-results-${{ matrix.node_index }}.xml \
           $(bundle exec split-test-rb \
-            --xml-path tmp/rspec-results.xml \
+            --xml-dir tmp/results \
             --node-index ${{ matrix.node_index }} \
             --node-total 5 \
             --debug)
 
-    - name: Upload test results
+    - name: Upload test results for this node
       uses: actions/upload-artifact@v6
       if: always()
       with:
         name: rspec-results-node-${{ matrix.node_index }}
-        path: tmp/rspec-results-${{ matrix.node_index }}.xml
+        path: tmp/results/rspec-results-${{ matrix.node_index }}.xml
 
-  merge-test-results:
+  save-test-results:
     runs-on: ubuntu-latest
     needs: parallel-test
     if: always()
     steps:
-    - uses: actions/checkout@v6
-
-    - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.3'
-        bundler-cache: true
-
     - name: Download all test results
       uses: actions/download-artifact@v7
       with:
@@ -109,24 +102,8 @@ jobs:
         path: tmp/results/
         merge-multiple: true
 
-    - name: Merge test results
-      run: |
-        # Merge all XML files into one for next run using proper XML merging
-        mkdir -p tmp
-        if ls tmp/results/rspec-results-*.xml 1> /dev/null 2>&1; then
-          bundle exec bin/merge-junit-xml tmp/rspec-results.xml tmp/results/rspec-results-*.xml
-        else
-          echo "<testsuites></testsuites>" > tmp/rspec-results.xml
-        fi
-
-    - name: Upload merged test results
-      uses: actions/upload-artifact@v6
-      with:
-        name: rspec-results
-        path: tmp/rspec-results.xml
-
     - name: Save test results to cache for next run
       uses: actions/cache/save@v5
       with:
-        path: tmp/rspec-results.xml
+        path: tmp/results/
         key: rspec-results-${{ github.ref }}

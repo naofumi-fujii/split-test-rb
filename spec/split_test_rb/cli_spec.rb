@@ -176,14 +176,41 @@ RSpec.describe SplitTestRb::CLI do
         { files: ['spec/a_spec.rb', 'spec/b_spec.rb'], total_time: 5.5 },
         { files: ['spec/c_spec.rb'], total_time: 3.2 }
       ]
+      timings = {
+        'spec/a_spec.rb' => 3.0,
+        'spec/b_spec.rb' => 2.5,
+        'spec/c_spec.rb' => 3.2
+      }
+      default_files = Set.new
 
       output = capture_stderr do
-        described_class.print_debug_info(nodes)
+        described_class.print_debug_info(nodes, timings, default_files)
       end
 
       expect(output).to match(/Test Distribution/)
       expect(output).to match(/Node 0: 2 files, 5\.5s total/)
       expect(output).to match(/Node 1: 1 files, 3\.2s total/)
+      expect(output).to match(/spec\/a_spec\.rb \(3\.0s\)/)
+      expect(output).to match(/spec\/b_spec\.rb \(2\.5s\)/)
+      expect(output).to match(/spec\/c_spec\.rb \(3\.2s\)/)
+    end
+
+    it 'marks default files in debug output' do
+      nodes = [
+        { files: ['spec/a_spec.rb', 'spec/b_spec.rb'], total_time: 2.0 }
+      ]
+      timings = {
+        'spec/a_spec.rb' => 1.0,
+        'spec/b_spec.rb' => 1.0
+      }
+      default_files = Set.new(['spec/b_spec.rb'])
+
+      output = capture_stderr do
+        described_class.print_debug_info(nodes, timings, default_files)
+      end
+
+      expect(output).to match(/spec\/a_spec\.rb \(1\.0s\)/)
+      expect(output).to match(/spec\/b_spec\.rb \(1\.0s, default\)/)
     end
   end
 

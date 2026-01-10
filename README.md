@@ -24,36 +24,6 @@ Then run:
 bundle install
 ```
 
-## Usage
-
-### Example with RSpec
-
-```bash
-# Run tests for node 0 out of 4 total nodes
-bundle exec rspec $(split-test-rb --xml-path rspec-results.xml --node-index 0 --node-total 4)
-```
-
-### Debug Mode
-
-Use `--debug` to see how tests are distributed:
-
-```bash
-split-test-rb --xml-path rspec-results.xml --node-total 4 --debug
-```
-
-Output:
-```
-=== Test Distribution ===
-Node 0: 5 files, 12.34s total
-  - spec/models/user_spec.rb
-  - spec/controllers/users_controller_spec.rb
-  ...
-Node 1: 6 files, 12.45s total
-  - spec/models/post_spec.rb
-  ...
-=========================
-```
-
 ## GitHub Actions Example
 
 First, add split-test-rb to your Gemfile:

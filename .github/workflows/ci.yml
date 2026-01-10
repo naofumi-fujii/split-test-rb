@@ -61,7 +61,7 @@ jobs:
     # Restore previous test results for optimal test distribution
     # Priority: 1) Current branch cache, 2) Main branch cache (for first PR run), 3) Any other branch
     - name: Restore previous test results from cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v5
       with:
         path: tmp/rspec-results.xml
         key: rspec-results-${{ github.ref }}
@@ -115,7 +115,7 @@ jobs:
         path: tmp/rspec-results.xml
 
     - name: Save test results to cache for next run
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v5
       with:
         path: tmp/rspec-results.xml
         key: rspec-results-${{ github.ref }}

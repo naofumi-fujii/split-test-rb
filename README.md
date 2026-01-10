@@ -26,20 +26,6 @@ bundle install
 
 ## Usage
 
-### Basic Usage
-
-```bash
-split-test-rb --xml-path rspec-results.xml --node-index 0 --node-total 4
-```
-
-### Options
-
-- `--xml-path PATH` - Path to JUnit XML report (required)
-- `--node-index INDEX` - Current node index, 0-based (default: 0)
-- `--node-total TOTAL` - Total number of nodes (default: 1)
-- `--debug` - Show debug information with distribution details
-- `-h, --help` - Show help message
-
 ### Example with RSpec
 
 ```bash

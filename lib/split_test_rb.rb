@@ -28,6 +28,30 @@ module SplitTestRb
       timings
     end
 
+    # Parses all XML files in a directory and merges results
+    def self.parse_directory(dir_path)
+      xml_files = Dir.glob(File.join(dir_path, '**', '*.xml'))
+      parse_files(xml_files)
+    end
+
+    # Parses multiple XML files and merges results
+    def self.parse_files(xml_paths)
+      timings = {}
+
+      xml_paths.each do |xml_path|
+        next unless File.exist?(xml_path)
+
+        file_timings = parse(xml_path)
+        file_timings.each do |file, time|
+          timings[file] ||= 0
+          timings[file] += time
+        end
+      end
+
+      timings
+    end
+
+
     # Normalizes file path by removing leading ./
     def self.normalize_path(path)
       path.sub(/^\.\//, '')
@@ -67,10 +91,11 @@ module SplitTestRb
         exit 1
       end
 
-      # Parse JUnit XML and get timings, or use all spec files if XML doesn't exist
+      # Parse JUnit XML files from directory and get timings, or use all spec files if directory doesn't exist
       default_files = Set.new
-      if File.exist?(options[:xml_path])
-        timings = JunitParser.parse(options[:xml_path])
+      xml_dir = options[:xml_path]
+      if File.directory?(xml_dir)
+        timings = JunitParser.parse_directory(xml_dir)
         # Find all spec files and add any missing ones with default weight
         all_spec_files = find_all_spec_files
         missing_files = all_spec_files.keys - timings.keys
@@ -82,7 +107,7 @@ module SplitTestRb
           end
         end
       else
-        warn "Warning: XML file not found: #{options[:xml_path]}, using all spec files with equal weights"
+        warn "Warning: XML directory not found: #{xml_dir}, using all spec files with equal weights"
         timings = find_all_spec_files
         default_files = Set.new(timings.keys)
       end
@@ -122,7 +147,7 @@ module SplitTestRb
           options[:total_nodes] = v
         end
 
-        opts.on('--xml-path PATH', 'Path to JUnit XML report') do |v|
+        opts.on('--xml-path PATH', 'Path to directory containing JUnit XML reports') do |v|
           options[:xml_path] = v
         end
 

@@ -88,5 +88,50 @@ RSpec.describe SplitTestRb::JunitParser do
         end
       end
     end
+
+    context 'with paths starting with ./' do
+      it 'normalizes paths by removing leading ./' do
+        Tempfile.create(['dotslash', '.xml']) do |file|
+          file.write(<<~XML)
+            <?xml version="1.0"?>
+            <testsuites>
+              <testsuite>
+                <testcase file="./spec/example1_spec.rb" time="1.0"/>
+                <testcase file="spec/example2_spec.rb" time="2.0"/>
+                <testcase file="./spec/example3_spec.rb" time="3.0"/>
+              </testsuite>
+            </testsuites>
+          XML
+          file.rewind
+
+          timings = described_class.parse(file.path)
+          # All paths should be normalized without ./
+          expect(timings.keys).to contain_exactly(
+            'spec/example1_spec.rb',
+            'spec/example2_spec.rb',
+            'spec/example3_spec.rb'
+          )
+          expect(timings['spec/example1_spec.rb']).to eq(1.0)
+          expect(timings['spec/example2_spec.rb']).to eq(2.0)
+          expect(timings['spec/example3_spec.rb']).to eq(3.0)
+        end
+      end
+    end
+  end
+
+  describe '.normalize_path' do
+    it 'removes leading ./ from paths' do
+      expect(described_class.normalize_path('./spec/models/user_spec.rb')).to eq('spec/models/user_spec.rb')
+      expect(described_class.normalize_path('./spec/example_spec.rb')).to eq('spec/example_spec.rb')
+    end
+
+    it 'leaves paths without ./ unchanged' do
+      expect(described_class.normalize_path('spec/models/user_spec.rb')).to eq('spec/models/user_spec.rb')
+      expect(described_class.normalize_path('spec/example_spec.rb')).to eq('spec/example_spec.rb')
+    end
+
+    it 'handles paths with ./ in the middle' do
+      expect(described_class.normalize_path('spec/./models/user_spec.rb')).to eq('spec/./models/user_spec.rb')
+    end
   end
 end

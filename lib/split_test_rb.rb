@@ -16,12 +16,20 @@ module SplitTestRb
 
         next unless file_path
 
+        # Normalize path to ensure consistent format (remove leading ./)
+        file_path = normalize_path(file_path)
+
         # Aggregate timing for files (sum if multiple test cases from same file)
         timings[file_path] ||= 0
         timings[file_path] += time
       end
 
       timings
+    end
+
+    # Normalizes file path by removing leading ./
+    def self.normalize_path(path)
+      path.sub(/^\.\//, '')
     end
   end
 
@@ -130,8 +138,11 @@ module SplitTestRb
     def self.find_all_spec_files
       # Find all spec files in the spec directory
       spec_files = Dir.glob('spec/**/*_spec.rb')
-      # Assign equal weight (1.0) to each file
-      spec_files.each_with_object({}) { |file, hash| hash[file] = 1.0 }
+      # Normalize paths and assign equal weight (1.0) to each file
+      spec_files.each_with_object({}) do |file, hash|
+        normalized_path = JunitParser.normalize_path(file)
+        hash[normalized_path] = 1.0
+      end
     end
 
     def self.print_debug_info(nodes)

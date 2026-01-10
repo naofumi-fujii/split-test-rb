@@ -51,12 +51,19 @@ RSpec.describe SplitTestRb::CLI do
       # Combined should include all files
       all_files = (node0_files + node1_files).sort
       expect(all_files).to include(
-        'spec/models/user_spec.rb',
-        'spec/models/post_spec.rb',
-        'spec/controllers/users_controller_spec.rb',
-        'spec/controllers/posts_controller_spec.rb',
-        'spec/services/auth_service_spec.rb',
-        'spec/helpers/application_helper_spec.rb'
+        'spec/split_test_rb/dummy_001_spec.rb',
+        'spec/split_test_rb/dummy_002_spec.rb',
+        'spec/split_test_rb/dummy_003_spec.rb',
+        'spec/split_test_rb/dummy_004_spec.rb',
+        'spec/split_test_rb/dummy_005_spec.rb',
+        'spec/split_test_rb/dummy_006_spec.rb',
+        'spec/split_test_rb/dummy_007_spec.rb',
+        'spec/split_test_rb/dummy_008_spec.rb',
+        'spec/split_test_rb/dummy_009_spec.rb',
+        'spec/split_test_rb/dummy_010_spec.rb',
+        'spec/split_test_rb/balancer_spec.rb',
+        'spec/split_test_rb/cli_spec.rb',
+        'spec/split_test_rb/junit_parser_spec.rb'
       )
     end
 

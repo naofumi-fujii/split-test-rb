@@ -1,15 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <testsuites>
-  <testsuite name="rspec" tests="10" skipped="0" failures="0" errors="0" time="15.5">
-    <testcase classname="spec.models.user_spec" name="User validates presence of name" file="spec/models/user_spec.rb" time="2.5"/>
-    <testcase classname="spec.models.user_spec" name="User validates uniqueness of email" file="spec/models/user_spec.rb" time="1.8"/>
-    <testcase classname="spec.models.post_spec" name="Post belongs to user" file="spec/models/post_spec.rb" time="3.2"/>
-    <testcase classname="spec.models.post_spec" name="Post has many comments" file="spec/models/post_spec.rb" time="2.1"/>
-    <testcase classname="spec.controllers.users_controller_spec" name="GET index returns success" file="spec/controllers/users_controller_spec.rb" time="1.5"/>
-    <testcase classname="spec.controllers.users_controller_spec" name="POST create creates user" file="spec/controllers/users_controller_spec.rb" time="0.8"/>
-    <testcase classname="spec.controllers.posts_controller_spec" name="GET index returns posts" file="spec/controllers/posts_controller_spec.rb" time="1.9"/>
-    <testcase classname="spec.services.auth_service_spec" name="AuthService authenticates user" file="spec/services/auth_service_spec.rb" time="0.7"/>
-    <testcase classname="spec.helpers.application_helper_spec" name="ApplicationHelper formats date" file="spec/helpers/application_helper_spec.rb" time="0.5"/>
-    <testcase classname="spec.helpers.application_helper_spec" name="ApplicationHelper sanitizes input" file="spec/helpers/application_helper_spec.rb" time="0.5"/>
+  <testsuite name="rspec" tests="13" skipped="0" failures="0" errors="0" time="153.5">
+    <testcase classname="spec.split_test_rb.dummy_001_spec" name="DummyTests001 sleeps for 1 seconds" file="spec/split_test_rb/dummy_001_spec.rb" time="1.0"/>
+    <testcase classname="spec.split_test_rb.dummy_002_spec" name="DummyTests002 sleeps for 2 seconds" file="spec/split_test_rb/dummy_002_spec.rb" time="2.0"/>
+    <testcase classname="spec.split_test_rb.dummy_003_spec" name="DummyTests003 sleeps for 3 seconds" file="spec/split_test_rb/dummy_003_spec.rb" time="3.0"/>
+    <testcase classname="spec.split_test_rb.dummy_004_spec" name="DummyTests004 sleeps for 5 seconds" file="spec/split_test_rb/dummy_004_spec.rb" time="5.0"/>
+    <testcase classname="spec.split_test_rb.dummy_005_spec" name="DummyTests005 sleeps for 10 seconds" file="spec/split_test_rb/dummy_005_spec.rb" time="10.0"/>
+    <testcase classname="spec.split_test_rb.dummy_006_spec" name="DummyTests006 sleeps for 15 seconds" file="spec/split_test_rb/dummy_006_spec.rb" time="15.0"/>
+    <testcase classname="spec.split_test_rb.dummy_007_spec" name="DummyTests007 sleeps for 20 seconds" file="spec/split_test_rb/dummy_007_spec.rb" time="20.0"/>
+    <testcase classname="spec.split_test_rb.dummy_008_spec" name="DummyTests008 sleeps for 25 seconds" file="spec/split_test_rb/dummy_008_spec.rb" time="25.0"/>
+    <testcase classname="spec.split_test_rb.dummy_009_spec" name="DummyTests009 sleeps for 30 seconds" file="spec/split_test_rb/dummy_009_spec.rb" time="30.0"/>
+    <testcase classname="spec.split_test_rb.dummy_010_spec" name="DummyTests010 sleeps for 40 seconds" file="spec/split_test_rb/dummy_010_spec.rb" time="40.0"/>
+    <testcase classname="spec.split_test_rb.balancer_spec" name="SplitTestRb::Balancer balances tests" file="spec/split_test_rb/balancer_spec.rb" time="0.5"/>
+    <testcase classname="spec.split_test_rb.cli_spec" name="SplitTestRb::CLI runs successfully" file="spec/split_test_rb/cli_spec.rb" time="1.5"/>
+    <testcase classname="spec.split_test_rb.junit_parser_spec" name="SplitTestRb::JunitParser parses XML" file="spec/split_test_rb/junit_parser_spec.rb" time="0.5"/>
   </testsuite>
 </testsuites>

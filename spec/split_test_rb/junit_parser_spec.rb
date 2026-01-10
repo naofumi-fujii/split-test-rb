@@ -247,45 +247,6 @@ RSpec.describe SplitTestRb::JunitParser do
     end
   end
 
-  describe '.parse_path' do
-    it 'parses single file when given file path' do
-      Tempfile.create(['single', '.xml']) do |file|
-        file.write(<<~XML)
-          <?xml version="1.0"?>
-          <testsuites>
-            <testsuite>
-              <testcase file="spec/a_spec.rb" time="1.0"/>
-            </testsuite>
-          </testsuites>
-        XML
-        file.rewind
-
-        timings = described_class.parse_path(file.path)
-
-        expect(timings.keys).to contain_exactly('spec/a_spec.rb')
-        expect(timings['spec/a_spec.rb']).to eq(1.0)
-      end
-    end
-
-    it 'parses directory when given directory path' do
-      Dir.mktmpdir do |dir|
-        File.write(File.join(dir, 'result.xml'), <<~XML)
-          <?xml version="1.0"?>
-          <testsuites>
-            <testsuite>
-              <testcase file="spec/a_spec.rb" time="1.0"/>
-            </testsuite>
-          </testsuites>
-        XML
-
-        timings = described_class.parse_path(dir)
-
-        expect(timings.keys).to contain_exactly('spec/a_spec.rb')
-        expect(timings['spec/a_spec.rb']).to eq(1.0)
-      end
-    end
-  end
-
   describe '.normalize_path' do
     it 'removes leading ./ from paths' do
       expect(described_class.normalize_path('./spec/models/user_spec.rb')).to eq('spec/models/user_spec.rb')

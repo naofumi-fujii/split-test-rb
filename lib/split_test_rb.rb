@@ -51,14 +51,6 @@ module SplitTestRb
       timings
     end
 
-    # Parses a path that can be either a file or directory
-    def self.parse_path(path)
-      if File.directory?(path)
-        parse_directory(path)
-      else
-        parse(path)
-      end
-    end
 
     # Normalizes file path by removing leading ./
     def self.normalize_path(path)
@@ -99,11 +91,11 @@ module SplitTestRb
         exit 1
       end
 
-      # Parse JUnit XML and get timings, or use all spec files if XML doesn't exist
+      # Parse JUnit XML files from directory and get timings, or use all spec files if directory doesn't exist
       default_files = Set.new
-      xml_path = options[:xml_path]
-      if File.exist?(xml_path) || File.directory?(xml_path)
-        timings = JunitParser.parse_path(xml_path)
+      xml_dir = options[:xml_path]
+      if File.directory?(xml_dir)
+        timings = JunitParser.parse_directory(xml_dir)
         # Find all spec files and add any missing ones with default weight
         all_spec_files = find_all_spec_files
         missing_files = all_spec_files.keys - timings.keys
@@ -115,7 +107,7 @@ module SplitTestRb
           end
         end
       else
-        warn "Warning: XML file not found: #{options[:xml_path]}, using all spec files with equal weights"
+        warn "Warning: XML directory not found: #{xml_dir}, using all spec files with equal weights"
         timings = find_all_spec_files
         default_files = Set.new(timings.keys)
       end
@@ -155,7 +147,7 @@ module SplitTestRb
           options[:total_nodes] = v
         end
 
-        opts.on('--xml-path PATH', 'Path to JUnit XML report') do |v|
+        opts.on('--xml-path PATH', 'Path to directory containing JUnit XML reports') do |v|
           options[:xml_path] = v
         end
 

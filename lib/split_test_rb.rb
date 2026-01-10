@@ -1,5 +1,6 @@
 require 'nokogiri'
 require 'optparse'
+require 'set'
 
 module SplitTestRb
   # Parses JUnit XML files and extracts test timing data
@@ -67,6 +68,7 @@ module SplitTestRb
       end
 
       # Parse JUnit XML and get timings, or use all spec files if XML doesn't exist
+      default_files = Set.new
       if File.exist?(options[:xml_path])
         timings = JunitParser.parse(options[:xml_path])
         # Find all spec files and add any missing ones with default weight
@@ -76,11 +78,13 @@ module SplitTestRb
           warn "Warning: Found #{missing_files.size} spec files not in XML, adding with default weight"
           missing_files.each do |file|
             timings[file] = 1.0
+            default_files.add(file)
           end
         end
       else
         warn "Warning: XML file not found: #{options[:xml_path]}, using all spec files with equal weights"
         timings = find_all_spec_files
+        default_files = Set.new(timings.keys)
       end
 
       if timings.empty?
@@ -92,7 +96,7 @@ module SplitTestRb
       nodes = Balancer.balance(timings, options[:total_nodes])
 
       if options[:debug]
-        print_debug_info(nodes)
+        print_debug_info(nodes, timings, default_files)
       end
 
       # Output files for the specified node
@@ -145,12 +149,16 @@ module SplitTestRb
       end
     end
 
-    def self.print_debug_info(nodes)
+    def self.print_debug_info(nodes, timings, default_files)
       warn '=== Test Distribution ==='
       nodes.each_with_index do |node, index|
         warn "Node #{index}: #{node[:files].size} files, #{node[:total_time].round(2)}s total"
         node[:files].each do |file|
-          warn "  - #{file}"
+          time = timings[file]
+          time_str = "(#{time.round(2)}s"
+          time_str += ', default' if default_files.include?(file)
+          time_str += ')'
+          warn "  - #{file} #{time_str}"
         end
       end
       warn '========================='

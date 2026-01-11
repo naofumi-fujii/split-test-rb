@@ -91,6 +91,16 @@ module SplitTestRb
         exit 1
       end
 
+      unless options[:test_dir]
+        warn 'Error: --test-dir is required'
+        exit 1
+      end
+
+      unless options[:test_pattern]
+        warn 'Error: --test-pattern is required'
+        exit 1
+      end
+
       # Parse JUnit XML files from directory and get timings, or use all test files if directory doesn't exist
       default_files = Set.new
       xml_dir = options[:xml_path]
@@ -133,9 +143,7 @@ module SplitTestRb
       options = {
         node_index: 0,
         total_nodes: 1,
-        debug: false,
-        test_dir: 'spec',
-        test_pattern: '**/*_spec.rb'
+        debug: false
       }
 
       OptionParser.new do |opts|
@@ -153,11 +161,11 @@ module SplitTestRb
           options[:xml_path] = v
         end
 
-        opts.on('--test-dir DIR', 'Test directory (default: spec)') do |v|
+        opts.on('--test-dir DIR', 'Test directory (required)') do |v|
           options[:test_dir] = v
         end
 
-        opts.on('--test-pattern PATTERN', 'Test file pattern (default: **/*_spec.rb)') do |v|
+        opts.on('--test-pattern PATTERN', 'Test file pattern (required)') do |v|
           options[:test_pattern] = v
         end
 

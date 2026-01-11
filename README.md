@@ -47,15 +47,15 @@ Options:
   --node-index INDEX          Current node index (0-based)
   --node-total TOTAL          Total number of nodes
   --xml-path PATH             Path to directory containing JUnit XML reports (required)
-  --test-dir DIR              Test directory (default: spec)
-  --test-pattern PATTERN      Test file pattern (default: **/*_spec.rb)
+  --test-dir DIR              Test directory (required)
+  --test-pattern PATTERN      Test file pattern (required)
   --debug                     Show debug information
   -h, --help                  Show help message
 ```
 
 ### Custom Test Directory and Pattern
 
-By default, split-test-rb looks for test files in the `spec/` directory with the pattern `**/*_spec.rb`. You can customize this for projects with different test directory structures:
+You must specify the test directory and pattern for your project. This allows split-test-rb to work with different test frameworks and directory structures:
 
 **Using Minitest with `test/` directory:**
 ```bash
@@ -94,7 +94,7 @@ split-test-rb provides intelligent fallback handling to ensure tests can run eve
 ### When XML file doesn't exist
 If the specified XML file is not found, the tool will:
 - Display a warning: `Warning: XML directory not found: <path>, using all test files with equal execution time`
-- Find all test files matching the specified directory and pattern (default: `spec/**/*_spec.rb`)
+- Find all test files matching the specified directory and pattern
 - Assign equal execution time (1.0 seconds) to each file
 - Distribute them evenly across nodes
 

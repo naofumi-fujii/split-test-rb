@@ -5,7 +5,7 @@ RSpec.describe SplitTestRb::CLI do
 
   describe '.run' do
     it 'outputs files for specified node' do
-      argv = ['--xml-path', fixture_dir, '--node-index', '0', '--node-total', '2']
+      argv = ['--xml-path', fixture_dir, '--node-index', '0', '--node-total', '2', '--test-dir', 'spec', '--test-pattern', '**/*_spec.rb']
 
       expect do
         described_class.run(argv)
@@ -20,8 +20,24 @@ RSpec.describe SplitTestRb::CLI do
       end.to output(/Error: --xml-path is required/).to_stderr
     end
 
+    it 'exits with error when test-dir is missing' do
+      argv = ['--xml-path', fixture_dir, '--test-pattern', '**/*_spec.rb']
+
+      expect do
+        expect { described_class.run(argv) }.to raise_error(SystemExit)
+      end.to output(/Error: --test-dir is required/).to_stderr
+    end
+
+    it 'exits with error when test-pattern is missing' do
+      argv = ['--xml-path', fixture_dir, '--test-dir', 'spec']
+
+      expect do
+        expect { described_class.run(argv) }.to raise_error(SystemExit)
+      end.to output(/Error: --test-pattern is required/).to_stderr
+    end
+
     it 'falls back to all spec files when XML directory does not exist' do
-      argv = ['--xml-path', 'nonexistent_dir', '--node-index', '0', '--node-total', '1']
+      argv = ['--xml-path', 'nonexistent_dir', '--node-index', '0', '--node-total', '1', '--test-dir', 'spec', '--test-pattern', '**/*_spec.rb']
 
       stdout_output = capture_stdout do
         capture_stderr do
@@ -35,11 +51,11 @@ RSpec.describe SplitTestRb::CLI do
 
     it 'outputs different files for different nodes' do
       node0_output = capture_stdout do
-        described_class.run(['--xml-path', fixture_dir, '--node-index', '0', '--node-total', '2'])
+        described_class.run(['--xml-path', fixture_dir, '--node-index', '0', '--node-total', '2', '--test-dir', 'spec', '--test-pattern', '**/*_spec.rb'])
       end
 
       node1_output = capture_stdout do
-        described_class.run(['--xml-path', fixture_dir, '--node-index', '1', '--node-total', '2'])
+        described_class.run(['--xml-path', fixture_dir, '--node-index', '1', '--node-total', '2', '--test-dir', 'spec', '--test-pattern', '**/*_spec.rb'])
       end
 
       node0_files = node0_output.strip.split("\n")
@@ -69,7 +85,7 @@ RSpec.describe SplitTestRb::CLI do
           FileUtils.mkdir_p(xml_dir)
           File.write(File.join(xml_dir, 'empty.xml'), '<?xml version="1.0"?><testsuites></testsuites>')
 
-          argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1']
+          argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1', '--test-dir', 'spec', '--test-pattern', '**/*_spec.rb']
 
           expect do
             expect { described_class.run(argv) }.to raise_error(SystemExit) { |error|
@@ -81,7 +97,7 @@ RSpec.describe SplitTestRb::CLI do
     end
 
     it 'outputs debug information when --debug flag is set' do
-      argv = ['--xml-path', fixture_dir, '--node-index', '0', '--node-total', '2', '--debug']
+      argv = ['--xml-path', fixture_dir, '--node-index', '0', '--node-total', '2', '--test-dir', 'spec', '--test-pattern', '**/*_spec.rb', '--debug']
 
       stderr_output = capture_stderr do
         capture_stdout do
@@ -95,7 +111,7 @@ RSpec.describe SplitTestRb::CLI do
     end
 
     it 'does not output debug information without --debug flag' do
-      argv = ['--xml-path', fixture_dir, '--node-index', '0', '--node-total', '2']
+      argv = ['--xml-path', fixture_dir, '--node-index', '0', '--node-total', '2', '--test-dir', 'spec', '--test-pattern', '**/*_spec.rb']
 
       stderr_output = capture_stderr do
         capture_stdout do
@@ -241,8 +257,8 @@ RSpec.describe SplitTestRb::CLI do
       expect(options[:node_index]).to eq(0)
       expect(options[:total_nodes]).to eq(1)
       expect(options[:debug]).to be false
-      expect(options[:test_dir]).to eq('spec')
-      expect(options[:test_pattern]).to eq('**/*_spec.rb')
+      expect(options[:test_dir]).to be_nil
+      expect(options[:test_pattern]).to be_nil
     end
   end
 

@@ -9,7 +9,7 @@ RSpec.describe SplitTestRb::CLI do
 
       expect do
         described_class.run(argv)
-      end.to output(/spec\//).to_stdout
+      end.to output(%r{spec/}).to_stdout
     end
 
     it 'exits with error when xml-path is missing' do
@@ -30,7 +30,7 @@ RSpec.describe SplitTestRb::CLI do
       end
 
       # Should output spec files from the current project
-      expect(stdout_output).to match(/spec\//)
+      expect(stdout_output).to match(%r{spec/})
     end
 
     it 'outputs different files for different nodes' do
@@ -161,7 +161,8 @@ RSpec.describe SplitTestRb::CLI do
             </testsuites>
           XML
 
-          argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1', '--test-dir', 'test', '--test-pattern', '**/*_test.rb']
+          argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1', '--test-dir', 'test',
+                  '--test-pattern', '**/*_test.rb']
 
           stdout_output = capture_stdout do
             capture_stderr do
@@ -189,7 +190,8 @@ RSpec.describe SplitTestRb::CLI do
           FileUtils.mkdir_p(xml_dir)
           File.write(File.join(xml_dir, 'empty.xml'), '<?xml version="1.0"?><testsuites></testsuites>')
 
-          argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1', '--test-dir', 'test', '--test-pattern', 'unit/*.test.rb']
+          argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1', '--test-dir', 'test',
+                  '--test-pattern', 'unit/*.test.rb']
 
           stdout_output = capture_stdout do
             capture_stderr do
@@ -267,9 +269,9 @@ RSpec.describe SplitTestRb::CLI do
       expect(output).to match(/Total: 3 test files, 8\.7s total/)
       expect(output).to match(/Node 0: 2 files, 5\.5s total/)
       expect(output).to match(/Node 1: 1 files, 3\.2s total/)
-      expect(output).to match(/spec\/a_spec\.rb \(3\.0s\)/)
-      expect(output).to match(/spec\/b_spec\.rb \(2\.5s\)/)
-      expect(output).to match(/spec\/c_spec\.rb \(3\.2s\)/)
+      expect(output).to match(%r{spec/a_spec\.rb \(3\.0s\)})
+      expect(output).to match(%r{spec/b_spec\.rb \(2\.5s\)})
+      expect(output).to match(%r{spec/c_spec\.rb \(3\.2s\)})
     end
 
     it 'marks default files in debug output' do
@@ -287,8 +289,8 @@ RSpec.describe SplitTestRb::CLI do
       end
 
       expect(output).to match(/Total: 2 test files, 2\.0s total/)
-      expect(output).to match(/spec\/a_spec\.rb \(1\.0s\)/)
-      expect(output).to match(/spec\/b_spec\.rb \(1\.0s, default\)/)
+      expect(output).to match(%r{spec/a_spec\.rb \(1\.0s\)})
+      expect(output).to match(%r{spec/b_spec\.rb \(1\.0s, default\)})
     end
   end
 

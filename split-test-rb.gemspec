@@ -6,7 +6,7 @@ Gem::Specification.new do |spec|
   spec.description   = 'A simple CLI tool to balance RSpec tests across parallel CI nodes using JUnit XML reports'
   spec.homepage      = 'https://github.com/naofumi-fujii/split-test-rb'
   spec.license       = 'MIT'
-  spec.required_ruby_version = '>= 2.7.0'
+  spec.required_ruby_version = '>= 3.2.0'
 
   spec.files         = Dir['lib/**/*', 'bin/*', 'LICENSE', 'README.md']
   spec.bindir        = 'bin'
@@ -17,5 +17,8 @@ Gem::Specification.new do |spec|
 
   spec.add_development_dependency 'rspec', '~> 3.12'
   spec.add_development_dependency 'rspec_junit_formatter', '~> 0.6'
+  spec.add_development_dependency 'rubocop', '~> 1.50'
+  spec.add_development_dependency 'rubocop-rspec', '~> 2.20'
   spec.add_development_dependency 'simplecov', '~> 0.22'
+  spec.metadata['rubygems_mfa_required'] = 'true'
 end

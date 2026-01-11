@@ -48,7 +48,7 @@ RSpec.describe SplitTestRb::Balancer do
       nodes = described_class.balance(timings, 1)
 
       expect(nodes.size).to eq(1)
-      expect(nodes[0][:files]).to contain_exactly(*timings.keys)
+      expect(nodes[0][:files]).to match_array(timings.keys)
       expect(nodes[0][:total_time]).to be_within(0.001).of(timings.values.sum)
     end
 

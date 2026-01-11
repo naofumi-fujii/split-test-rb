@@ -51,10 +51,9 @@ module SplitTestRb
       timings
     end
 
-
     # Normalizes file path by removing leading ./
     def self.normalize_path(path)
-      path.sub(/^\.\//, '')
+      path.sub(%r{^\./}, '')
     end
   end
 
@@ -120,9 +119,7 @@ module SplitTestRb
       # Balance tests across nodes
       nodes = Balancer.balance(timings, options[:total_nodes])
 
-      if options[:debug]
-        print_debug_info(nodes, timings, default_files)
-      end
+      print_debug_info(nodes, timings, default_files) if options[:debug]
 
       # Output files for the specified node
       node_files = nodes[options[:node_index]][:files]

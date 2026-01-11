@@ -1,6 +1,5 @@
 require 'nokogiri'
 require 'optparse'
-require 'set'
 
 module SplitTestRb
   # Parses JUnit XML files and extracts test timing data

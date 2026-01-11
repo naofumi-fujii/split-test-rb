@@ -140,6 +140,69 @@ RSpec.describe SplitTestRb::CLI do
         end
       end
     end
+
+    it 'uses custom test directory when --test-dir is specified' do
+      Dir.mktmpdir do |tmpdir|
+        Dir.chdir(tmpdir) do
+          # Create test directory and files
+          FileUtils.mkdir_p('test')
+          File.write('test/user_test.rb', '# test 1')
+          File.write('test/post_test.rb', '# test 2')
+
+          # Create XML directory
+          xml_dir = 'xml_results'
+          FileUtils.mkdir_p(xml_dir)
+          File.write(File.join(xml_dir, 'test.xml'), <<~XML)
+            <?xml version="1.0"?>
+            <testsuites>
+              <testsuite>
+                <testcase file="test/user_test.rb" time="1.0"/>
+              </testsuite>
+            </testsuites>
+          XML
+
+          argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1', '--test-dir', 'test', '--test-pattern', '**/*_test.rb']
+
+          stdout_output = capture_stdout do
+            capture_stderr do
+              described_class.run(argv)
+            end
+          end
+
+          # Should output both test files (one from XML, one added with default time)
+          expect(stdout_output).to include('test/user_test.rb')
+          expect(stdout_output).to include('test/post_test.rb')
+        end
+      end
+    end
+
+    it 'uses custom test pattern when --test-pattern is specified' do
+      Dir.mktmpdir do |tmpdir|
+        Dir.chdir(tmpdir) do
+          # Create test directory with custom pattern
+          FileUtils.mkdir_p('test/unit')
+          File.write('test/unit/user.test.rb', '# test 1')
+          File.write('test/unit/post.test.rb', '# test 2')
+
+          # Create empty XML directory
+          xml_dir = 'xml_results'
+          FileUtils.mkdir_p(xml_dir)
+          File.write(File.join(xml_dir, 'empty.xml'), '<?xml version="1.0"?><testsuites></testsuites>')
+
+          argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1', '--test-dir', 'test', '--test-pattern', 'unit/*.test.rb']
+
+          stdout_output = capture_stdout do
+            capture_stderr do
+              described_class.run(argv)
+            end
+          end
+
+          # Should output files matching the custom pattern
+          expect(stdout_output).to include('test/unit/user.test.rb')
+          expect(stdout_output).to include('test/unit/post.test.rb')
+        end
+      end
+    end
   end
 
   describe '.parse_options' do
@@ -163,11 +226,23 @@ RSpec.describe SplitTestRb::CLI do
       expect(options[:debug]).to be true
     end
 
+    it 'parses test-dir option' do
+      options = described_class.parse_options(['--test-dir', 'test'])
+      expect(options[:test_dir]).to eq('test')
+    end
+
+    it 'parses test-pattern option' do
+      options = described_class.parse_options(['--test-pattern', '**/*_test.rb'])
+      expect(options[:test_pattern]).to eq('**/*_test.rb')
+    end
+
     it 'sets default values' do
       options = described_class.parse_options([])
       expect(options[:node_index]).to eq(0)
       expect(options[:total_nodes]).to eq(1)
       expect(options[:debug]).to be false
+      expect(options[:test_dir]).to eq('spec')
+      expect(options[:test_pattern]).to eq('**/*_spec.rb')
     end
   end
 

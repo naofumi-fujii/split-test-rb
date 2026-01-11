@@ -80,6 +80,8 @@ jobs:
             --xml-path tmp/rspec-results/ \
             --node-index ${{ matrix.node_index }} \
             --node-total 5 \
+            --test-dir spec \
+            --test-pattern '**/*_spec.rb' \
             --debug)
 
     - name: Upload test results

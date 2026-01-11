@@ -91,24 +91,24 @@ module SplitTestRb
         exit 1
       end
 
-      # Parse JUnit XML files from directory and get timings, or use all spec files if directory doesn't exist
+      # Parse JUnit XML files from directory and get timings, or use all test files if directory doesn't exist
       default_files = Set.new
       xml_dir = options[:xml_path]
       if File.directory?(xml_dir)
         timings = JunitParser.parse_directory(xml_dir)
-        # Find all spec files and add any missing ones with default execution time
-        all_spec_files = find_all_spec_files
-        missing_files = all_spec_files.keys - timings.keys
+        # Find all test files and add any missing ones with default execution time
+        all_test_files = find_all_spec_files(options[:test_dir], options[:test_pattern])
+        missing_files = all_test_files.keys - timings.keys
         unless missing_files.empty?
-          warn "Warning: Found #{missing_files.size} spec files not in XML, adding with default execution time"
+          warn "Warning: Found #{missing_files.size} test files not in XML, adding with default execution time"
           missing_files.each do |file|
             timings[file] = 1.0
             default_files.add(file)
           end
         end
       else
-        warn "Warning: XML directory not found: #{xml_dir}, using all spec files with equal execution time"
-        timings = find_all_spec_files
+        warn "Warning: XML directory not found: #{xml_dir}, using all test files with equal execution time"
+        timings = find_all_spec_files(options[:test_dir], options[:test_pattern])
         default_files = Set.new(timings.keys)
       end
 
@@ -133,7 +133,9 @@ module SplitTestRb
       options = {
         node_index: 0,
         total_nodes: 1,
-        debug: false
+        debug: false,
+        test_dir: 'spec',
+        test_pattern: '**/*_spec.rb'
       }
 
       OptionParser.new do |opts|
@@ -151,6 +153,14 @@ module SplitTestRb
           options[:xml_path] = v
         end
 
+        opts.on('--test-dir DIR', 'Test directory (default: spec)') do |v|
+          options[:test_dir] = v
+        end
+
+        opts.on('--test-pattern PATTERN', 'Test file pattern (default: **/*_spec.rb)') do |v|
+          options[:test_pattern] = v
+        end
+
         opts.on('--debug', 'Show debug information') do
           options[:debug] = true
         end
@@ -164,18 +174,24 @@ module SplitTestRb
       options
     end
 
-    def self.find_all_spec_files
-      # Find all spec files in the spec directory
-      spec_files = Dir.glob('spec/**/*_spec.rb')
+    def self.find_all_spec_files(test_dir = 'spec', test_pattern = '**/*_spec.rb')
+      # Find all test files in the specified directory with the given pattern
+      glob_pattern = File.join(test_dir, test_pattern)
+      test_files = Dir.glob(glob_pattern)
       # Normalize paths and assign equal execution time (1.0) to each file
-      spec_files.each_with_object({}) do |file, hash|
+      test_files.each_with_object({}) do |file, hash|
         normalized_path = JunitParser.normalize_path(file)
         hash[normalized_path] = 1.0
       end
     end
 
     def self.print_debug_info(nodes, timings, default_files)
+      total_files = timings.size
+      total_time = timings.values.sum.round(2)
+
       warn '=== Test Distribution ==='
+      warn "Total: #{total_files} test files, #{total_time}s total"
+      warn ''
       nodes.each_with_index do |node, index|
         warn "Node #{index}: #{node[:files].size} files, #{node[:total_time].round(2)}s total"
         node[:files].each do |file|

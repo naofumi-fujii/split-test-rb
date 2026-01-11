@@ -186,7 +186,12 @@ module SplitTestRb
     end
 
     def self.print_debug_info(nodes, timings, default_files)
+      total_files = timings.size
+      total_time = timings.values.sum.round(2)
+
       warn '=== Test Distribution ==='
+      warn "Total: #{total_files} test files, #{total_time}s total"
+      warn ''
       nodes.each_with_index do |node, index|
         warn "Node #{index}: #{node[:files].size} files, #{node[:total_time].round(2)}s total"
         node[:files].each do |file|

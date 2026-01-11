@@ -264,6 +264,7 @@ RSpec.describe SplitTestRb::CLI do
       end
 
       expect(output).to match(/Test Distribution/)
+      expect(output).to match(/Total: 3 test files, 8\.7s total/)
       expect(output).to match(/Node 0: 2 files, 5\.5s total/)
       expect(output).to match(/Node 1: 1 files, 3\.2s total/)
       expect(output).to match(/spec\/a_spec\.rb \(3\.0s\)/)
@@ -285,6 +286,7 @@ RSpec.describe SplitTestRb::CLI do
         described_class.print_debug_info(nodes, timings, default_files)
       end
 
+      expect(output).to match(/Total: 2 test files, 2\.0s total/)
       expect(output).to match(/spec\/a_spec\.rb \(1\.0s\)/)
       expect(output).to match(/spec\/b_spec\.rb \(1\.0s, default\)/)
     end

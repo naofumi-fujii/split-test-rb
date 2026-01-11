@@ -96,18 +96,18 @@ module SplitTestRb
       xml_dir = options[:xml_path]
       if File.directory?(xml_dir)
         timings = JunitParser.parse_directory(xml_dir)
-        # Find all spec files and add any missing ones with default weight
+        # Find all spec files and add any missing ones with default execution time
         all_spec_files = find_all_spec_files
         missing_files = all_spec_files.keys - timings.keys
         unless missing_files.empty?
-          warn "Warning: Found #{missing_files.size} spec files not in XML, adding with default weight"
+          warn "Warning: Found #{missing_files.size} spec files not in XML, adding with default execution time"
           missing_files.each do |file|
             timings[file] = 1.0
             default_files.add(file)
           end
         end
       else
-        warn "Warning: XML directory not found: #{xml_dir}, using all spec files with equal weights"
+        warn "Warning: XML directory not found: #{xml_dir}, using all spec files with equal execution time"
         timings = find_all_spec_files
         default_files = Set.new(timings.keys)
       end
@@ -167,7 +167,7 @@ module SplitTestRb
     def self.find_all_spec_files
       # Find all spec files in the spec directory
       spec_files = Dir.glob('spec/**/*_spec.rb')
-      # Normalize paths and assign equal weight (1.0) to each file
+      # Normalize paths and assign equal execution time (1.0) to each file
       spec_files.each_with_object({}) do |file, hash|
         normalized_path = JunitParser.normalize_path(file)
         hash[normalized_path] = 1.0

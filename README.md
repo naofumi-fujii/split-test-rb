@@ -48,7 +48,7 @@ split-test-rb provides intelligent fallback handling to ensure tests can run eve
 
 ### When XML file doesn't exist
 If the specified XML file is not found, the tool will:
-- Display a warning: `Warning: XML file not found: <path>, using all spec files with equal weights`
+- Display a warning: `Warning: XML file not found: <path>, using all spec files with equal execution time`
 - Find all spec files matching `spec/**/*_spec.rb`
 - Assign equal execution time (1.0 seconds) to each file
 - Distribute them evenly across nodes
@@ -60,7 +60,7 @@ This is useful for:
 
 ### When spec files are missing from XML
 If new spec files exist that aren't in the XML report, the tool will:
-- Display a warning: `Warning: Found N spec files not in XML, adding with default weight`
+- Display a warning: `Warning: Found N spec files not in XML, adding with default execution time`
 - Add the missing files with default execution time (1.0 seconds)
 - Include them in the distribution
 

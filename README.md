@@ -33,7 +33,7 @@ First, add split-test-rb to your Gemfile:
 gem 'split-test-rb', github: 'naofumi-fujii/split-test-rb'
 ```
 
-This project has real running example:
+For a working example, see this project's own CI configuration:
 - [.github/workflows/ci.yml](https://github.com/naofumi-fujii/split-test-rb/blob/main/.github/workflows/ci.yml)
 
 ## Usage

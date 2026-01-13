@@ -62,7 +62,7 @@ RSpec.describe SplitTestRb::CLI do
       # Temporarily change directory to a location without spec files
       with_temp_test_dir do |tmpdir|
         # Create empty XML directory
-        xml_dir = File.join(tmpdir, 'xml_results')
+        xml_dir = File.join(tmpdir, xml_results_dirname)
         FileUtils.mkdir_p(xml_dir)
         File.write(File.join(xml_dir, 'empty.xml'), '<?xml version="1.0"?><testsuites></testsuites>')
 
@@ -179,8 +179,8 @@ RSpec.describe SplitTestRb::CLI do
     end
 
     it 'parses xml-path option' do
-      options = described_class.parse_options(['--xml-path', 'test.xml'])
-      expect(options[:xml_path]).to eq('test.xml')
+      options = described_class.parse_options(['--xml-path', test_xml_filename])
+      expect(options[:xml_path]).to eq(test_xml_filename)
     end
 
     it 'parses debug flag' do

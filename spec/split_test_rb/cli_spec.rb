@@ -23,14 +23,10 @@ RSpec.describe SplitTestRb::CLI do
     it 'falls back to all spec files when XML directory does not exist' do
       argv = ['--xml-path', 'nonexistent_dir', '--node-index', '0', '--node-total', '1']
 
-      stdout_output = capture_stdout do
-        capture_stderr do
-          described_class.run(argv)
-        end
-      end
+      output = run_cli_capturing_both(argv)
 
       # Should output spec files from the current project
-      expect(stdout_output).to match(%r{spec/})
+      expect(output[:stdout]).to match(%r{spec/})
     end
 
     it 'outputs different files for different nodes' do
@@ -62,147 +58,109 @@ RSpec.describe SplitTestRb::CLI do
 
     it 'exits with status 0 when no test files found' do
       # Temporarily change directory to a location without spec files
-      Dir.mktmpdir do |tmpdir|
-        Dir.chdir(tmpdir) do
-          # Create empty XML directory
-          xml_dir = File.join(tmpdir, 'xml_results')
-          FileUtils.mkdir_p(xml_dir)
-          File.write(File.join(xml_dir, 'empty.xml'), '<?xml version="1.0"?><testsuites></testsuites>')
+      with_temp_test_dir do |tmpdir|
+        # Create empty XML directory
+        xml_dir = File.join(tmpdir, 'xml_results')
+        FileUtils.mkdir_p(xml_dir)
+        File.write(File.join(xml_dir, 'empty.xml'), '<?xml version="1.0"?><testsuites></testsuites>')
 
-          argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1']
+        argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1']
 
-          expect do
-            expect { described_class.run(argv) }.to raise_error(SystemExit) { |error|
-              expect(error.status).to eq(0)
-            }
-          end.to output(/Warning: No test files found/).to_stderr
-        end
+        expect do
+          expect { described_class.run(argv) }.to raise_error(SystemExit) { |error|
+            expect(error.status).to eq(0)
+          }
+        end.to output(/Warning: No test files found/).to_stderr
       end
     end
 
     it 'outputs debug information when --debug flag is set' do
       argv = ['--xml-path', fixture_dir, '--node-index', '0', '--node-total', '2', '--debug']
 
-      stderr_output = capture_stderr do
-        capture_stdout do
-          described_class.run(argv)
-        end
-      end
+      output = run_cli_capturing_both(argv)
 
-      expect(stderr_output).to match(/Test Balancing/)
-      expect(stderr_output).to match(/Node 0:/)
-      expect(stderr_output).to match(/Node 1:/)
+      expect(output[:stderr]).to match(/Test Balancing/)
+      expect(output[:stderr]).to match(/Node 0:/)
+      expect(output[:stderr]).to match(/Node 1:/)
     end
 
     it 'does not output debug information without --debug flag' do
       argv = ['--xml-path', fixture_dir, '--node-index', '0', '--node-total', '2']
 
-      stderr_output = capture_stderr do
-        capture_stdout do
-          described_class.run(argv)
-        end
-      end
+      output = run_cli_capturing_both(argv)
 
-      expect(stderr_output).not_to match(/Test Balancing/)
+      expect(output[:stderr]).not_to match(/Test Balancing/)
     end
 
     it 'does not warn when all spec files are in XML' do
-      Dir.mktmpdir do |tmpdir|
-        Dir.chdir(tmpdir) do
-          # Create spec directory and files
-          FileUtils.mkdir_p('spec')
-          File.write('spec/test1_spec.rb', '# test 1')
-          File.write('spec/test2_spec.rb', '# test 2')
+      with_temp_test_dir do
+        # Create spec directory and files
+        FileUtils.mkdir_p('spec')
+        File.write('spec/test1_spec.rb', '# test 1')
+        File.write('spec/test2_spec.rb', '# test 2')
 
-          # Create XML directory containing all spec files
-          xml_dir = 'xml_results'
-          FileUtils.mkdir_p(xml_dir)
-          File.write(File.join(xml_dir, 'test.xml'), <<~XML)
-            <?xml version="1.0"?>
-            <testsuites>
-              <testsuite>
-                <testcase file="spec/test1_spec.rb" time="1.0"/>
-                <testcase file="spec/test2_spec.rb" time="2.0"/>
-              </testsuite>
-            </testsuites>
-          XML
+        # Create XML directory containing all spec files
+        xml_dir = 'xml_results'
+        FileUtils.mkdir_p(xml_dir)
+        create_xml_file(File.join(xml_dir, 'test.xml'), [
+          { file: 'spec/test1_spec.rb', time: '1.0' },
+          { file: 'spec/test2_spec.rb', time: '2.0' }
+        ])
 
-          argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1']
+        argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1']
 
-          stderr_output = capture_stderr do
-            capture_stdout do
-              described_class.run(argv)
-            end
-          end
+        output = run_cli_capturing_both(argv)
 
-          # Should not warn about missing files
-          expect(stderr_output).not_to match(/spec files not in XML/)
-        end
+        # Should not warn about missing files
+        expect(output[:stderr]).not_to match(/spec files not in XML/)
       end
     end
 
     it 'uses custom test directory when --test-dir is specified' do
-      Dir.mktmpdir do |tmpdir|
-        Dir.chdir(tmpdir) do
-          # Create test directory and files
-          FileUtils.mkdir_p('test')
-          File.write('test/user_test.rb', '# test 1')
-          File.write('test/post_test.rb', '# test 2')
+      with_temp_test_dir do
+        # Create test directory and files
+        FileUtils.mkdir_p('test')
+        File.write('test/user_test.rb', '# test 1')
+        File.write('test/post_test.rb', '# test 2')
 
-          # Create XML directory
-          xml_dir = 'xml_results'
-          FileUtils.mkdir_p(xml_dir)
-          File.write(File.join(xml_dir, 'test.xml'), <<~XML)
-            <?xml version="1.0"?>
-            <testsuites>
-              <testsuite>
-                <testcase file="test/user_test.rb" time="1.0"/>
-              </testsuite>
-            </testsuites>
-          XML
+        # Create XML directory
+        xml_dir = 'xml_results'
+        FileUtils.mkdir_p(xml_dir)
+        create_xml_file(File.join(xml_dir, 'test.xml'), [
+          { file: 'test/user_test.rb', time: '1.0' }
+        ])
 
-          argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1', '--test-dir', 'test',
-                  '--test-pattern', '**/*_test.rb']
+        argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1', '--test-dir', 'test',
+                '--test-pattern', '**/*_test.rb']
 
-          stdout_output = capture_stdout do
-            capture_stderr do
-              described_class.run(argv)
-            end
-          end
+        output = run_cli_capturing_both(argv)
 
-          # Should output both test files (one from XML, one added with default time)
-          expect(stdout_output).to include('test/user_test.rb')
-          expect(stdout_output).to include('test/post_test.rb')
-        end
+        # Should output both test files (one from XML, one added with default time)
+        expect(output[:stdout]).to include('test/user_test.rb')
+        expect(output[:stdout]).to include('test/post_test.rb')
       end
     end
 
     it 'uses custom test pattern when --test-pattern is specified' do
-      Dir.mktmpdir do |tmpdir|
-        Dir.chdir(tmpdir) do
-          # Create test directory with custom pattern
-          FileUtils.mkdir_p('test/unit')
-          File.write('test/unit/user.test.rb', '# test 1')
-          File.write('test/unit/post.test.rb', '# test 2')
+      with_temp_test_dir do
+        # Create test directory with custom pattern
+        FileUtils.mkdir_p('test/unit')
+        File.write('test/unit/user.test.rb', '# test 1')
+        File.write('test/unit/post.test.rb', '# test 2')
 
-          # Create empty XML directory
-          xml_dir = 'xml_results'
-          FileUtils.mkdir_p(xml_dir)
-          File.write(File.join(xml_dir, 'empty.xml'), '<?xml version="1.0"?><testsuites></testsuites>')
+        # Create empty XML directory
+        xml_dir = 'xml_results'
+        FileUtils.mkdir_p(xml_dir)
+        File.write(File.join(xml_dir, 'empty.xml'), '<?xml version="1.0"?><testsuites></testsuites>')
 
-          argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1', '--test-dir', 'test',
-                  '--test-pattern', 'unit/*.test.rb']
+        argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1', '--test-dir', 'test',
+                '--test-pattern', 'unit/*.test.rb']
 
-          stdout_output = capture_stdout do
-            capture_stderr do
-              described_class.run(argv)
-            end
-          end
+        output = run_cli_capturing_both(argv)
 
-          # Should output files matching the custom pattern
-          expect(stdout_output).to include('test/unit/user.test.rb')
-          expect(stdout_output).to include('test/unit/post.test.rb')
-        end
+        # Should output files matching the custom pattern
+        expect(output[:stdout]).to include('test/unit/user.test.rb')
+        expect(output[:stdout]).to include('test/unit/post.test.rb')
       end
     end
   end
@@ -347,5 +305,35 @@ RSpec.describe SplitTestRb::CLI do
     $stderr.string
   ensure
     $stderr = original_stderr
+  end
+
+  def run_cli_capturing_both(argv)
+    stdout_output = nil
+    stderr_output = capture_stderr do
+      stdout_output = capture_stdout do
+        described_class.run(argv)
+      end
+    end
+    { stdout: stdout_output, stderr: stderr_output }
+  end
+
+  def with_temp_test_dir
+    Dir.mktmpdir do |tmpdir|
+      Dir.chdir(tmpdir) do
+        yield tmpdir
+      end
+    end
+  end
+
+  def create_xml_file(path, testcases)
+    xml_content = <<~XML
+      <?xml version="1.0"?>
+      <testsuites>
+        <testsuite>
+          #{testcases.map { |tc| "          <testcase file=\"#{tc[:file]}\" time=\"#{tc[:time]}\"/>" }.join("\n")}
+        </testsuite>
+      </testsuites>
+    XML
+    File.write(path, xml_content)
   end
 end

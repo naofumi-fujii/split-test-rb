@@ -181,24 +181,44 @@ module SplitTestRb
       end
     end
 
+    # Outputs debug information about test distribution
+    # Shows distribution statistics, timing data sources, and per-node assignments
     def self.print_debug_info(nodes, timings, default_files)
       total_files = timings.size
       total_time = timings.values.sum.round(2)
+      files_from_xml = total_files - default_files.size
 
-      warn '=== Test Distribution ==='
-      warn "Total: #{total_files} test files, #{total_time}s total"
+      # Calculate load balance variance (lower is better)
+      avg_time = total_time / nodes.size
+      variance = nodes.map { |n| ((n[:total_time] - avg_time) / avg_time * 100).round(1) }
+      max_deviation = variance.map(&:abs).max
+
+      warn '=== Test Distribution Debug Info ==='
       warn ''
+      warn '## Timing Data Source (from past test execution results)'
+      warn "  - Files with historical timing: #{files_from_xml} files"
+      warn "  - Files with default timing (1.0s): #{default_files.size} files"
+      warn "  - Total files: #{total_files} files"
+      warn "  - Total estimated time: #{total_time}s"
+      warn ''
+      warn '## Load Balance'
+      warn "  - Average time per node: #{avg_time.round(2)}s"
+      warn "  - Max deviation from average: #{max_deviation}%"
+      warn ''
+      warn '## Per-Node Distribution'
       nodes.each_with_index do |node, index|
-        warn "Node #{index}: #{node[:files].size} files, #{node[:total_time].round(2)}s total"
+        deviation_str = variance[index] >= 0 ? "+#{variance[index]}%" : "#{variance[index]}%"
+        warn "Node #{index}: #{node[:files].size} files, #{node[:total_time].round(2)}s (#{deviation_str} from avg)"
         node[:files].each do |file|
           time = timings[file]
           time_str = "(#{time.round(2)}s"
-          time_str += ', default' if default_files.include?(file)
+          time_str += ', default - no historical data' if default_files.include?(file)
           time_str += ')'
           warn "  - #{file} #{time_str}"
         end
+        warn ''
       end
-      warn '========================='
+      warn '===================================='
     end
   end
 end

@@ -265,10 +265,18 @@ RSpec.describe SplitTestRb::CLI do
         described_class.print_debug_info(nodes, timings, default_files)
       end
 
-      expect(output).to match(/Test Distribution/)
-      expect(output).to match(/Total: 3 test files, 8\.7s total/)
-      expect(output).to match(/Node 0: 2 files, 5\.5s total/)
-      expect(output).to match(/Node 1: 1 files, 3\.2s total/)
+      expect(output).to match(/Test Distribution Debug Info/)
+      expect(output).to match(/Timing Data Source \(from past test execution results\)/)
+      expect(output).to match(/Files with historical timing: 3 files/)
+      expect(output).to match(/Files with default timing \(1\.0s\): 0 files/)
+      expect(output).to match(/Total files: 3 files/)
+      expect(output).to match(/Total estimated time: 8\.7s/)
+      expect(output).to match(/Load Balance/)
+      expect(output).to match(/Average time per node: 4\.35s/)
+      expect(output).to match(/Max deviation from average: 26\.4%/)
+      expect(output).to match(/Per-Node Distribution/)
+      expect(output).to match(/Node 0: 2 files, 5\.5s \(\+26\.4% from avg\)/)
+      expect(output).to match(/Node 1: 1 files, 3\.2s \(-26\.4% from avg\)/)
       expect(output).to match(%r{spec/a_spec\.rb \(3\.0s\)})
       expect(output).to match(%r{spec/b_spec\.rb \(2\.5s\)})
       expect(output).to match(%r{spec/c_spec\.rb \(3\.2s\)})
@@ -288,9 +296,13 @@ RSpec.describe SplitTestRb::CLI do
         described_class.print_debug_info(nodes, timings, default_files)
       end
 
-      expect(output).to match(/Total: 2 test files, 2\.0s total/)
+      expect(output).to match(/Test Distribution Debug Info/)
+      expect(output).to match(/Files with historical timing: 1 files/)
+      expect(output).to match(/Files with default timing \(1\.0s\): 1 files/)
+      expect(output).to match(/Total files: 2 files/)
+      expect(output).to match(/Total estimated time: 2\.0s/)
       expect(output).to match(%r{spec/a_spec\.rb \(1\.0s\)})
-      expect(output).to match(%r{spec/b_spec\.rb \(1\.0s, default\)})
+      expect(output).to match(%r{spec/b_spec\.rb \(1\.0s, default - no historical data\)})
     end
   end
 

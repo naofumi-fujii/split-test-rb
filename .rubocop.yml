@@ -30,6 +30,9 @@ Metrics/MethodLength:
 Metrics/AbcSize:
   Max: 45
 
+Metrics/ClassLength:
+  Max: 130
+
 RSpec/MultipleExpectations:
   Max: 10
 

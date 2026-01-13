@@ -89,7 +89,7 @@ RSpec.describe SplitTestRb::CLI do
         end
       end
 
-      expect(stderr_output).to match(/Test Distribution/)
+      expect(stderr_output).to match(/Test Balancing/)
       expect(stderr_output).to match(/Node 0:/)
       expect(stderr_output).to match(/Node 1:/)
     end
@@ -103,7 +103,7 @@ RSpec.describe SplitTestRb::CLI do
         end
       end
 
-      expect(stderr_output).not_to match(/Test Distribution/)
+      expect(stderr_output).not_to match(/Test Balancing/)
     end
 
     it 'does not warn when all spec files are in XML' do
@@ -249,26 +249,59 @@ RSpec.describe SplitTestRb::CLI do
   end
 
   describe '.print_debug_info' do
-    it 'outputs debug information to stderr' do
-      nodes = [
+    let(:nodes) do
+      [
         { files: ['spec/a_spec.rb', 'spec/b_spec.rb'], total_time: 5.5 },
         { files: ['spec/c_spec.rb'], total_time: 3.2 }
       ]
-      timings = {
+    end
+    let(:timings) do
+      {
         'spec/a_spec.rb' => 3.0,
         'spec/b_spec.rb' => 2.5,
         'spec/c_spec.rb' => 3.2
       }
-      default_files = Set.new
+    end
+    let(:default_files) { Set.new }
 
+    it 'outputs debug sections and structure' do
       output = capture_stderr do
         described_class.print_debug_info(nodes, timings, default_files)
       end
 
-      expect(output).to match(/Test Distribution/)
-      expect(output).to match(/Total: 3 test files, 8\.7s total/)
-      expect(output).to match(/Node 0: 2 files, 5\.5s total/)
-      expect(output).to match(/Node 1: 1 files, 3\.2s total/)
+      expect(output).to match(/Test Balancing Debug Info/)
+      expect(output).to match(/Timing Data Source \(from past test execution results\)/)
+      expect(output).to match(/Load Balance/)
+      expect(output).to match(/Per-Node Distribution/)
+    end
+
+    it 'outputs timing data source statistics' do
+      output = capture_stderr do
+        described_class.print_debug_info(nodes, timings, default_files)
+      end
+
+      expect(output).to match(/Files with historical timing: 3 files/)
+      expect(output).to match(/Files with default timing \(1\.0s\): 0 files/)
+      expect(output).to match(/Total files: 3 files/)
+      expect(output).to match(/Total estimated time: 8\.7s/)
+    end
+
+    it 'outputs load balance statistics' do
+      output = capture_stderr do
+        described_class.print_debug_info(nodes, timings, default_files)
+      end
+
+      expect(output).to match(/Average time per node: 4\.35s/)
+      expect(output).to match(/Max deviation from average: 26\.4%/)
+    end
+
+    it 'outputs per-node distribution with deviations' do
+      output = capture_stderr do
+        described_class.print_debug_info(nodes, timings, default_files)
+      end
+
+      expect(output).to match(/Node 0: 2 files, 5\.5s \(\+26\.4% from avg\)/)
+      expect(output).to match(/Node 1: 1 files, 3\.2s \(-26\.4% from avg\)/)
       expect(output).to match(%r{spec/a_spec\.rb \(3\.0s\)})
       expect(output).to match(%r{spec/b_spec\.rb \(2\.5s\)})
       expect(output).to match(%r{spec/c_spec\.rb \(3\.2s\)})
@@ -288,9 +321,13 @@ RSpec.describe SplitTestRb::CLI do
         described_class.print_debug_info(nodes, timings, default_files)
       end
 
-      expect(output).to match(/Total: 2 test files, 2\.0s total/)
+      expect(output).to match(/Test Balancing Debug Info/)
+      expect(output).to match(/Files with historical timing: 1 files/)
+      expect(output).to match(/Files with default timing \(1\.0s\): 1 files/)
+      expect(output).to match(/Total files: 2 files/)
+      expect(output).to match(/Total estimated time: 2\.0s/)
       expect(output).to match(%r{spec/a_spec\.rb \(1\.0s\)})
-      expect(output).to match(%r{spec/b_spec\.rb \(1\.0s, default\)})
+      expect(output).to match(%r{spec/b_spec\.rb \(1\.0s, default - no historical data\)})
     end
   end
 

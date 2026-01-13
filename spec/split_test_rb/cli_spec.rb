@@ -2,6 +2,8 @@ require 'spec_helper'
 
 RSpec.describe SplitTestRb::CLI do
   let(:fixture_dir) { File.expand_path('../fixtures', __dir__) }
+  let(:test_xml_filename) { 'test.xml' }
+  let(:xml_results_dirname) { 'xml_results' }
 
   describe '.run' do
     it 'outputs files for specified node' do
@@ -60,7 +62,7 @@ RSpec.describe SplitTestRb::CLI do
       # Temporarily change directory to a location without spec files
       with_temp_test_dir do |tmpdir|
         # Create empty XML directory
-        xml_dir = File.join(tmpdir, 'xml_results')
+        xml_dir = File.join(tmpdir, xml_results_dirname)
         FileUtils.mkdir_p(xml_dir)
         File.write(File.join(xml_dir, 'empty.xml'), '<?xml version="1.0"?><testsuites></testsuites>')
 
@@ -100,9 +102,9 @@ RSpec.describe SplitTestRb::CLI do
         File.write('spec/test2_spec.rb', '# test 2')
 
         # Create XML directory containing all spec files
-        xml_dir = 'xml_results'
+        xml_dir = xml_results_dirname
         FileUtils.mkdir_p(xml_dir)
-        create_xml_file(File.join(xml_dir, 'test.xml'), [
+        create_xml_file(File.join(xml_dir, test_xml_filename), [
                           { file: 'spec/test1_spec.rb', time: '1.0' },
                           { file: 'spec/test2_spec.rb', time: '2.0' }
                         ])
@@ -124,9 +126,9 @@ RSpec.describe SplitTestRb::CLI do
         File.write('test/post_test.rb', '# test 2')
 
         # Create XML directory
-        xml_dir = 'xml_results'
+        xml_dir = xml_results_dirname
         FileUtils.mkdir_p(xml_dir)
-        create_xml_file(File.join(xml_dir, 'test.xml'), [
+        create_xml_file(File.join(xml_dir, test_xml_filename), [
                           { file: 'test/user_test.rb', time: '1.0' }
                         ])
 
@@ -149,7 +151,7 @@ RSpec.describe SplitTestRb::CLI do
         File.write('test/unit/post.test.rb', '# test 2')
 
         # Create empty XML directory
-        xml_dir = 'xml_results'
+        xml_dir = xml_results_dirname
         FileUtils.mkdir_p(xml_dir)
         File.write(File.join(xml_dir, 'empty.xml'), '<?xml version="1.0"?><testsuites></testsuites>')
 
@@ -177,8 +179,8 @@ RSpec.describe SplitTestRb::CLI do
     end
 
     it 'parses xml-path option' do
-      options = described_class.parse_options(['--xml-path', 'test.xml'])
-      expect(options[:xml_path]).to eq('test.xml')
+      options = described_class.parse_options(['--xml-path', test_xml_filename])
+      expect(options[:xml_path]).to eq(test_xml_filename)
     end
 
     it 'parses debug flag' do

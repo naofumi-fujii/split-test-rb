@@ -193,7 +193,7 @@ module SplitTestRb
       variance = nodes.map { |n| ((n[:total_time] - avg_time) / avg_time * 100).round(1) }
       max_deviation = variance.map(&:abs).max
 
-      warn '=== Test Distribution Debug Info ==='
+      warn '=== Test Balancing Debug Info ==='
       warn ''
       warn '## Timing Data Source (from past test execution results)'
       warn "  - Files with historical timing: #{files_from_xml} files"

@@ -89,7 +89,7 @@ RSpec.describe SplitTestRb::CLI do
         end
       end
 
-      expect(stderr_output).to match(/Test Distribution/)
+      expect(stderr_output).to match(/Test Balancing/)
       expect(stderr_output).to match(/Node 0:/)
       expect(stderr_output).to match(/Node 1:/)
     end
@@ -103,7 +103,7 @@ RSpec.describe SplitTestRb::CLI do
         end
       end
 
-      expect(stderr_output).not_to match(/Test Distribution/)
+      expect(stderr_output).not_to match(/Test Balancing/)
     end
 
     it 'does not warn when all spec files are in XML' do
@@ -265,7 +265,7 @@ RSpec.describe SplitTestRb::CLI do
         described_class.print_debug_info(nodes, timings, default_files)
       end
 
-      expect(output).to match(/Test Distribution Debug Info/)
+      expect(output).to match(/Test Balancing Debug Info/)
       expect(output).to match(/Timing Data Source \(from past test execution results\)/)
       expect(output).to match(/Files with historical timing: 3 files/)
       expect(output).to match(/Files with default timing \(1\.0s\): 0 files/)
@@ -296,7 +296,7 @@ RSpec.describe SplitTestRb::CLI do
         described_class.print_debug_info(nodes, timings, default_files)
       end
 
-      expect(output).to match(/Test Distribution Debug Info/)
+      expect(output).to match(/Test Balancing Debug Info/)
       expect(output).to match(/Files with historical timing: 1 files/)
       expect(output).to match(/Files with default timing \(1\.0s\): 1 files/)
       expect(output).to match(/Total files: 2 files/)

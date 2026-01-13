@@ -187,38 +187,67 @@ module SplitTestRb
       total_files = timings.size
       total_time = timings.values.sum.round(2)
       files_from_xml = total_files - default_files.size
-
-      # Calculate load balance variance (lower is better)
-      avg_time = total_time / nodes.size
-      variance = nodes.map { |n| ((n[:total_time] - avg_time) / avg_time * 100).round(1) }
-      max_deviation = variance.map(&:abs).max
+      avg_time, variance, max_deviation = calculate_load_balance_stats(nodes, total_time)
 
       warn '=== Test Balancing Debug Info ==='
       warn ''
+      print_timing_data_source(files_from_xml, default_files.size, total_files, total_time)
+      print_load_balance_stats(avg_time, max_deviation)
+      print_node_distribution(nodes, variance, timings, default_files)
+      warn '===================================='
+    end
+
+    # Calculates load balance statistics across nodes
+    def self.calculate_load_balance_stats(nodes, total_time)
+      avg_time = total_time / nodes.size
+      variance = nodes.map { |n| ((n[:total_time] - avg_time) / avg_time * 100).round(1) }
+      max_deviation = variance.map(&:abs).max
+      [avg_time, variance, max_deviation]
+    end
+
+    # Prints timing data source information
+    def self.print_timing_data_source(files_from_xml, default_files_count, total_files, total_time)
       warn '## Timing Data Source (from past test execution results)'
       warn "  - Files with historical timing: #{files_from_xml} files"
-      warn "  - Files with default timing (1.0s): #{default_files.size} files"
+      warn "  - Files with default timing (1.0s): #{default_files_count} files"
       warn "  - Total files: #{total_files} files"
       warn "  - Total estimated time: #{total_time}s"
       warn ''
+    end
+
+    # Prints load balance statistics
+    def self.print_load_balance_stats(avg_time, max_deviation)
       warn '## Load Balance'
       warn "  - Average time per node: #{avg_time.round(2)}s"
       warn "  - Max deviation from average: #{max_deviation}%"
       warn ''
+    end
+
+    # Prints per-node distribution details
+    def self.print_node_distribution(nodes, variance, timings, default_files)
       warn '## Per-Node Distribution'
       nodes.each_with_index do |node, index|
-        deviation_str = variance[index] >= 0 ? "+#{variance[index]}%" : "#{variance[index]}%"
-        warn "Node #{index}: #{node[:files].size} files, #{node[:total_time].round(2)}s (#{deviation_str} from avg)"
-        node[:files].each do |file|
-          time = timings[file]
-          time_str = "(#{time.round(2)}s"
-          time_str += ', default - no historical data' if default_files.include?(file)
-          time_str += ')'
-          warn "  - #{file} #{time_str}"
-        end
-        warn ''
+        print_node_info(node, index, variance[index], timings, default_files)
       end
-      warn '===================================='
+    end
+
+    # Prints information for a single node
+    def self.print_node_info(node, index, deviation, timings, default_files)
+      deviation_str = deviation >= 0 ? "+#{deviation}%" : "#{deviation}%"
+      warn "Node #{index}: #{node[:files].size} files, #{node[:total_time].round(2)}s (#{deviation_str} from avg)"
+      node[:files].each do |file|
+        warn "  - #{file} #{format_file_timing(file, timings, default_files)}"
+      end
+      warn ''
+    end
+
+    # Formats file timing information with labels
+    def self.format_file_timing(file, timings, default_files)
+      time = timings[file]
+      timing_str = "(#{time.round(2)}s"
+      timing_str += ', default - no historical data' if default_files.include?(file)
+      timing_str += ')'
+      timing_str
     end
   end
 end

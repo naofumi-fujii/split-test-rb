@@ -103,9 +103,9 @@ RSpec.describe SplitTestRb::CLI do
         xml_dir = 'xml_results'
         FileUtils.mkdir_p(xml_dir)
         create_xml_file(File.join(xml_dir, 'test.xml'), [
-          { file: 'spec/test1_spec.rb', time: '1.0' },
-          { file: 'spec/test2_spec.rb', time: '2.0' }
-        ])
+                          { file: 'spec/test1_spec.rb', time: '1.0' },
+                          { file: 'spec/test2_spec.rb', time: '2.0' }
+                        ])
 
         argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1']
 
@@ -127,8 +127,8 @@ RSpec.describe SplitTestRb::CLI do
         xml_dir = 'xml_results'
         FileUtils.mkdir_p(xml_dir)
         create_xml_file(File.join(xml_dir, 'test.xml'), [
-          { file: 'test/user_test.rb', time: '1.0' }
-        ])
+                          { file: 'test/user_test.rb', time: '1.0' }
+                        ])
 
         argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1', '--test-dir', 'test',
                 '--test-pattern', '**/*_test.rb']

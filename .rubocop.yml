@@ -29,8 +29,6 @@ Metrics/MethodLength:
 
 Metrics/AbcSize:
   Max: 25
-  Exclude:
-    - 'spec/**/*'
 
 Metrics/ClassLength:
   Max: 150

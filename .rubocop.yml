@@ -28,10 +28,12 @@ Metrics/MethodLength:
   Max: 35
 
 Metrics/AbcSize:
-  Max: 45
+  Max: 25
+  Exclude:
+    - 'spec/**/*'
 
 Metrics/ClassLength:
-  Max: 130
+  Max: 150
 
 RSpec/MultipleExpectations:
   Max: 10

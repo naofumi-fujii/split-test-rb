@@ -83,45 +83,63 @@ module SplitTestRb
   class CLI
     def self.run(argv)
       options = parse_options(argv)
+      validate_options!(options)
 
-      unless options[:xml_path]
-        warn 'Error: --xml-path is required'
-        exit 1
-      end
+      timings, default_files = load_timings(options)
+      exit_if_no_tests(timings)
 
-      # Parse JUnit XML files from directory and get timings, or use all test files if directory doesn't exist
-      default_files = Set.new
+      nodes = Balancer.balance(timings, options[:total_nodes])
+      print_debug_info(nodes, timings, default_files) if options[:debug]
+
+      output_node_files(nodes, options[:node_index])
+    end
+
+    def self.validate_options!(options)
+      return if options[:xml_path]
+
+      warn 'Error: --xml-path is required'
+      exit 1
+    end
+
+    def self.load_timings(options)
       xml_dir = options[:xml_path]
+
       if File.directory?(xml_dir)
-        timings = JunitParser.parse_directory(xml_dir)
-        # Find all test files and add any missing ones with default execution time
-        all_test_files = find_all_spec_files(options[:test_dir], options[:test_pattern])
-        missing_files = all_test_files.keys - timings.keys
-        unless missing_files.empty?
-          warn "Warning: Found #{missing_files.size} test files not in XML, adding with default execution time"
-          missing_files.each do |file|
-            timings[file] = 1.0
-            default_files.add(file)
-          end
-        end
+        load_timings_from_xml(xml_dir, options)
       else
         warn "Warning: XML directory not found: #{xml_dir}, using all test files with equal execution time"
         timings = find_all_spec_files(options[:test_dir], options[:test_pattern])
-        default_files = Set.new(timings.keys)
+        [timings, Set.new(timings.keys)]
+      end
+    end
+
+    def self.load_timings_from_xml(xml_dir, options)
+      timings = JunitParser.parse_directory(xml_dir)
+      default_files = Set.new
+
+      all_test_files = find_all_spec_files(options[:test_dir], options[:test_pattern])
+      missing_files = all_test_files.keys - timings.keys
+
+      unless missing_files.empty?
+        warn "Warning: Found #{missing_files.size} test files not in XML, adding with default execution time"
+        missing_files.each do |file|
+          timings[file] = 1.0
+          default_files.add(file)
+        end
       end
 
-      if timings.empty?
-        warn 'Warning: No test files found'
-        exit 0
-      end
+      [timings, default_files]
+    end
 
-      # Balance tests across nodes
-      nodes = Balancer.balance(timings, options[:total_nodes])
+    def self.exit_if_no_tests(timings)
+      return unless timings.empty?
 
-      print_debug_info(nodes, timings, default_files) if options[:debug]
+      warn 'Warning: No test files found'
+      exit 0
+    end
 
-      # Output files for the specified node
-      node_files = nodes[options[:node_index]][:files]
+    def self.output_node_files(nodes, node_index)
+      node_files = nodes[node_index][:files]
       puts node_files.join("\n")
     end
 

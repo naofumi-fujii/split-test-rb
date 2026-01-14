@@ -39,9 +39,6 @@ RSpec/MultipleExpectations:
 RSpec/ExampleLength:
   Max: 30
 
-RSpec/MultipleMemoizedHelpers:
-  Max: 6
-
 RSpec/IdenticalEqualityAssertion:
   Enabled: false
 

@@ -143,49 +143,52 @@ module SplitTestRb
       puts node_files.join("\n")
     end
 
-    def self.parse_options(argv)
-      options = {
-        node_index: 0,
-        total_nodes: 1,
-        debug: false,
-        test_dir: 'spec',
-        test_pattern: '**/*_spec.rb'
-      }
+    # Default option values for CLI
+    DEFAULT_OPTIONS = {
+      node_index: 0,
+      total_nodes: 1,
+      debug: false,
+      test_dir: 'spec',
+      test_pattern: '**/*_spec.rb'
+    }.freeze
 
+    # Parses command-line arguments and returns options hash
+    def self.parse_options(argv)
+      options = DEFAULT_OPTIONS.dup
+      build_option_parser(options).parse!(argv)
+      options
+    end
+
+    # Builds and configures the OptionParser instance
+    def self.build_option_parser(options)
       OptionParser.new do |opts|
         opts.banner = 'Usage: split-test-rb [options]'
+        define_options(opts, options)
+      end
+    end
 
-        opts.on('--node-index INDEX', Integer, 'Current node index (0-based)') do |v|
-          options[:node_index] = v
-        end
+    # Defines all CLI options on the given OptionParser
+    def self.define_options(opts, options)
+      define_node_options(opts, options)
+      define_test_options(opts, options)
+    end
 
-        opts.on('--node-total TOTAL', Integer, 'Total number of nodes') do |v|
-          options[:total_nodes] = v
-        end
+    # Defines node distribution related CLI options
+    def self.define_node_options(opts, options)
+      opts.on('--node-index INDEX', Integer, 'Current node index (0-based)') { |v| options[:node_index] = v }
+      opts.on('--node-total TOTAL', Integer, 'Total number of nodes') { |v| options[:total_nodes] = v }
+      opts.on('--xml-path PATH', 'Path to directory containing JUnit XML reports') { |v| options[:xml_path] = v }
+    end
 
-        opts.on('--xml-path PATH', 'Path to directory containing JUnit XML reports') do |v|
-          options[:xml_path] = v
-        end
-
-        opts.on('--test-dir DIR', 'Test directory (default: spec)') do |v|
-          options[:test_dir] = v
-        end
-
-        opts.on('--test-pattern PATTERN', 'Test file pattern (default: **/*_spec.rb)') do |v|
-          options[:test_pattern] = v
-        end
-
-        opts.on('--debug', 'Show debug information') do
-          options[:debug] = true
-        end
-
-        opts.on('-h', '--help', 'Show this help message') do
-          puts opts
-          exit
-        end
-      end.parse!(argv)
-
-      options
+    # Defines test configuration and utility CLI options
+    def self.define_test_options(opts, options)
+      opts.on('--test-dir DIR', 'Test directory (default: spec)') { |v| options[:test_dir] = v }
+      opts.on('--test-pattern PATTERN', 'Test file pattern (default: **/*_spec.rb)') { |v| options[:test_pattern] = v }
+      opts.on('--debug', 'Show debug information') { options[:debug] = true }
+      opts.on('-h', '--help', 'Show this help message') do
+        puts opts
+        exit
+      end
     end
 
     def self.find_all_spec_files(test_dir = 'spec', test_pattern = '**/*_spec.rb')

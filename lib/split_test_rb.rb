@@ -169,13 +169,26 @@ module SplitTestRb
 
     # Defines all CLI options on the given OptionParser
     def self.define_options(opts, options)
+      define_node_options(opts, options)
+      define_test_options(opts, options)
+    end
+
+    # Defines node distribution related CLI options
+    def self.define_node_options(opts, options)
       opts.on('--node-index INDEX', Integer, 'Current node index (0-based)') { |v| options[:node_index] = v }
       opts.on('--node-total TOTAL', Integer, 'Total number of nodes') { |v| options[:total_nodes] = v }
       opts.on('--xml-path PATH', 'Path to directory containing JUnit XML reports') { |v| options[:xml_path] = v }
+    end
+
+    # Defines test configuration and utility CLI options
+    def self.define_test_options(opts, options)
       opts.on('--test-dir DIR', 'Test directory (default: spec)') { |v| options[:test_dir] = v }
       opts.on('--test-pattern PATTERN', 'Test file pattern (default: **/*_spec.rb)') { |v| options[:test_pattern] = v }
       opts.on('--debug', 'Show debug information') { options[:debug] = true }
-      opts.on('-h', '--help', 'Show this help message') { puts opts; exit }
+      opts.on('-h', '--help', 'Show this help message') do
+        puts opts
+        exit
+      end
     end
 
     def self.find_all_spec_files(test_dir = 'spec', test_pattern = '**/*_spec.rb')

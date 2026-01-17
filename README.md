@@ -113,7 +113,7 @@ This ensures newly added test files are always included in the test run.
 
 ## RSpec JSON Format
 
-The tool expects RSpec JSON output format (generated with `--format json`):
+The tool expects [RSpec JSON output format](https://rspec.info/features/3-13/rspec-core/formatters/json-formatter/) (generated with `--format json`):
 
 ```json
 {

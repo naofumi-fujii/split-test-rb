@@ -218,7 +218,7 @@ RSpec.describe SplitTestRb::CLI do
     end
   end
 
-  describe '.print_debug_info' do
+  describe 'DebugPrinter.print' do
     let(:nodes) do
       [
         { files: ['spec/a_spec.rb', 'spec/b_spec.rb'], total_time: 5.5 },
@@ -237,7 +237,7 @@ RSpec.describe SplitTestRb::CLI do
 
     it 'outputs debug sections and structure' do
       output = capture_stderr do
-        described_class.print_debug_info(nodes, timings, default_files, json_files)
+        SplitTestRb::DebugPrinter.print(nodes, timings, default_files, json_files)
       end
 
       expect(output).to match(/Test Balancing Debug Info/)
@@ -248,7 +248,7 @@ RSpec.describe SplitTestRb::CLI do
 
     it 'outputs timing data source statistics' do
       output = capture_stderr do
-        described_class.print_debug_info(nodes, timings, default_files, json_files)
+        SplitTestRb::DebugPrinter.print(nodes, timings, default_files, json_files)
       end
 
       expect(output).to match(/Files with historical timing: 3 files/)
@@ -259,7 +259,7 @@ RSpec.describe SplitTestRb::CLI do
 
     it 'outputs load balance statistics' do
       output = capture_stderr do
-        described_class.print_debug_info(nodes, timings, default_files, json_files)
+        SplitTestRb::DebugPrinter.print(nodes, timings, default_files, json_files)
       end
 
       expect(output).to match(/Average time per node: 4\.35s/)
@@ -268,7 +268,7 @@ RSpec.describe SplitTestRb::CLI do
 
     it 'outputs per-node distribution with deviations' do
       output = capture_stderr do
-        described_class.print_debug_info(nodes, timings, default_files, json_files)
+        SplitTestRb::DebugPrinter.print(nodes, timings, default_files, json_files)
       end
 
       expect(output).to match(/Node 0: 2 files, 5\.5s \(\+26\.4% from avg\)/)
@@ -289,7 +289,7 @@ RSpec.describe SplitTestRb::CLI do
       default_files = Set.new(['spec/b_spec.rb'])
 
       output = capture_stderr do
-        described_class.print_debug_info(nodes, timings, default_files, [])
+        SplitTestRb::DebugPrinter.print(nodes, timings, default_files, [])
       end
 
       expect(output).to match(/Test Balancing Debug Info/)
@@ -304,7 +304,7 @@ RSpec.describe SplitTestRb::CLI do
     it 'outputs loaded JSON files information' do
       json_files = ['tmp/results/node0.json', 'tmp/results/node1.json']
       output = capture_stderr do
-        described_class.print_debug_info(nodes, timings, default_files, json_files)
+        SplitTestRb::DebugPrinter.print(nodes, timings, default_files, json_files)
       end
 
       expect(output).to match(/Loaded Test Result Files/)

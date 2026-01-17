@@ -90,7 +90,7 @@ module SplitTestRb
       exit_if_no_tests(timings)
 
       nodes = Balancer.balance(timings, options[:total_nodes])
-      print_debug_info(nodes, timings, default_files, json_files) if options[:debug]
+      DebugPrinter.print(nodes, timings, default_files, json_files) if options[:debug]
 
       output_node_files(nodes, options[:node_index])
     end
@@ -117,20 +117,26 @@ module SplitTestRb
     def self.load_timings_from_json(json_dir, options)
       json_files = Dir.glob(File.join(json_dir, '**', '*.json'))
       timings = JsonParser.parse_files(json_files)
-      default_files = Set.new
-
       all_test_files = find_all_spec_files(options[:test_dir], options[:test_pattern])
-      missing_files = all_test_files.keys - timings.keys
-
-      unless missing_files.empty?
-        warn "Warning: Found #{missing_files.size} test files not in JSON, adding with default execution time"
-        missing_files.each do |file|
-          timings[file] = 1.0
-          default_files.add(file)
-        end
-      end
+      default_files = add_missing_files_with_default_timing(timings, all_test_files)
 
       [timings, default_files, json_files]
+    end
+
+    # Adds test files missing from JSON results with default timing (1.0s)
+    def self.add_missing_files_with_default_timing(timings, all_test_files)
+      default_files = Set.new
+      missing_files = all_test_files.keys - timings.keys
+
+      return default_files if missing_files.empty?
+
+      warn "Warning: Found #{missing_files.size} test files not in JSON, adding with default execution time"
+      missing_files.each do |file|
+        timings[file] = 1.0
+        default_files.add(file)
+      end
+
+      default_files
     end
 
     def self.exit_if_no_tests(timings)
@@ -203,10 +209,12 @@ module SplitTestRb
         hash[normalized_path] = 1.0
       end
     end
+  end
 
-    # Outputs debug information about test distribution
+  # Outputs debug information about test distribution
+  module DebugPrinter
     # Shows distribution statistics, timing data sources, and per-node assignments
-    def self.print_debug_info(nodes, timings, default_files, json_files)
+    def self.print(nodes, timings, default_files, json_files)
       total_files = timings.size
       total_time = timings.values.sum.round(2)
       files_from_xml = total_files - default_files.size

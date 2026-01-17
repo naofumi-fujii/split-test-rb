@@ -73,15 +73,16 @@ jobs:
         bundler-cache: true
 
     # Restore previous test results for optimal test distribution
-    # Priority: 1) Current branch cache, 2) Main branch cache (for first PR run), 3) Any other branch
+    # Uses prefix matching to find the latest cache from the same branch or main branch
+    # Cache key version: increment when changing cache format
     - name: Restore previous test results from cache
       uses: actions/cache/restore@v5
       with:
         path: tmp/rspec-results/
-        key: rspec-results-${{ github.ref }}
+        key: rspec-results-v1-${{ github.ref }}-${{ github.run_id }}
         restore-keys: |
-          rspec-results-refs/heads/main
-          rspec-results-
+          rspec-results-v1-${{ github.ref }}-
+          rspec-results-v1-refs/heads/main-
 
     - name: Run tests with split-test-rb
       run: |
@@ -129,4 +130,4 @@ jobs:
       uses: actions/cache/save@v5
       with:
         path: tmp/rspec-results/
-        key: rspec-results-${{ github.ref }}
+        key: rspec-results-v1-${{ github.ref }}-${{ github.run_id }}

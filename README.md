@@ -2,11 +2,11 @@
 
 [![codecov](https://codecov.io/gh/naofumi-fujii/split-test-rb/branch/main/graph/badge.svg)](https://codecov.io/gh/naofumi-fujii/split-test-rb)
 
-A simple Ruby CLI tool to balance RSpec tests across parallel CI nodes using JUnit XML reports.
+A simple Ruby CLI tool to balance RSpec tests across parallel CI nodes using RSpec JSON reports.
 
 ## Overview
 
-split-test-rb reads JUnit XML test reports containing execution times and distributes test files across multiple nodes for parallel execution. It uses a greedy algorithm to ensure balanced distribution based on historical test execution times.
+split-test-rb reads RSpec JSON test reports containing execution times and distributes test files across multiple nodes for parallel execution. It uses a greedy algorithm to ensure balanced distribution based on historical test execution times.
 
 ## Installation
 
@@ -46,7 +46,7 @@ split-test-rb [options]
 Options:
   --node-index INDEX          Current node index (0-based)
   --node-total TOTAL          Total number of nodes
-  --xml-path PATH             Path to directory containing JUnit XML reports (required)
+  --json-path PATH            Path to directory containing RSpec JSON reports (required)
   --test-dir DIR              Test directory (default: spec)
   --test-pattern PATTERN      Test file pattern (default: **/*_spec.rb)
   --debug                     Show debug information
@@ -59,7 +59,7 @@ By default, split-test-rb looks for test files in the `spec/` directory with the
 
 **Using Minitest with `test/` directory:**
 ```bash
-split-test-rb --xml-path tmp/test-results \
+split-test-rb --json-path tmp/test-results \
   --node-index $CI_NODE_INDEX \
   --node-total $CI_NODE_TOTAL \
   --test-dir test \
@@ -68,7 +68,7 @@ split-test-rb --xml-path tmp/test-results \
 
 **Custom test directory structure:**
 ```bash
-split-test-rb --xml-path tmp/test-results \
+split-test-rb --json-path tmp/test-results \
   --node-index 0 \
   --node-total 4 \
   --test-dir tests \
@@ -83,7 +83,7 @@ The test directory and pattern options are useful for:
 
 ## How It Works
 
-1. **Parse JUnit XML**: Extracts test file paths and execution times from the XML report
+1. **Parse RSpec JSON**: Extracts test file paths and execution times from the JSON report
 2. **Greedy Balancing**: Sorts files by execution time (descending) and assigns each file to the node with the lowest cumulative time
 3. **Output**: Prints the list of test files for the specified node
 
@@ -91,9 +91,9 @@ The test directory and pattern options are useful for:
 
 split-test-rb provides intelligent fallback handling to ensure tests can run even without historical timing data:
 
-### When XML file doesn't exist
-If the specified XML file is not found, the tool will:
-- Display a warning: `Warning: XML directory not found: <path>, using all test files with equal execution time`
+### When JSON file doesn't exist
+If the specified JSON file is not found, the tool will:
+- Display a warning: `Warning: JSON directory not found: <path>, using all test files with equal execution time`
 - Find all test files matching the specified directory and pattern (default: `spec/**/*_spec.rb`)
 - Assign equal execution time (1.0 seconds) to each file
 - Distribute them evenly across nodes
@@ -103,26 +103,38 @@ This is useful for:
 - Local development environments
 - New CI pipelines
 
-### When test files are missing from XML
-If new test files exist that aren't in the XML report, the tool will:
-- Display a warning: `Warning: Found N test files not in XML, adding with default execution time`
+### When test files are missing from JSON
+If new test files exist that aren't in the JSON report, the tool will:
+- Display a warning: `Warning: Found N test files not in JSON, adding with default execution time`
 - Add the missing files with default execution time (1.0 seconds)
 - Include them in the distribution
 
 This ensures newly added test files are always included in the test run.
 
-## JUnit XML Format
+## RSpec JSON Format
 
-The tool expects JUnit XML with `file` or `filepath` attributes on testcase elements:
+The tool expects RSpec JSON output format (generated with `--format json`):
 
-```xml
-<testsuite>
-  <testcase file="spec/models/user_spec.rb" time="1.234" />
-  <testcase file="spec/models/post_spec.rb" time="0.567" />
-</testsuite>
+```json
+{
+  "examples": [
+    {
+      "file_path": "./spec/models/user_spec.rb",
+      "run_time": 1.234
+    },
+    {
+      "file_path": "./spec/models/post_spec.rb",
+      "run_time": 0.567
+    }
+  ]
+}
 ```
 
-For RSpec, use the `rspec_junit_formatter` gem to generate compatible XML reports.
+To generate JSON reports with RSpec, use the built-in JSON formatter:
+
+```bash
+bundle exec rspec --format json --out tmp/rspec-results/results.json
+```
 
 ## License
 

@@ -5,23 +5,23 @@ RSpec.describe SplitTestRb::CLI do
 
   describe '.run' do
     it 'outputs files for specified node' do
-      argv = ['--xml-path', fixture_dir, '--node-index', '0', '--node-total', '2']
+      argv = ['--json-path', fixture_dir, '--node-index', '0', '--node-total', '2']
 
       expect do
         described_class.run(argv)
       end.to output(%r{spec/}).to_stdout
     end
 
-    it 'exits with error when xml-path is missing' do
+    it 'exits with error when json-path is missing' do
       argv = []
 
       expect do
         expect { described_class.run(argv) }.to raise_error(SystemExit)
-      end.to output(/Error: --xml-path is required/).to_stderr
+      end.to output(/Error: --json-path is required/).to_stderr
     end
 
-    it 'falls back to all spec files when XML directory does not exist' do
-      argv = ['--xml-path', 'nonexistent_dir', '--node-index', '0', '--node-total', '1']
+    it 'falls back to all spec files when JSON directory does not exist' do
+      argv = ['--json-path', 'nonexistent_dir', '--node-index', '0', '--node-total', '1']
 
       output = run_cli_capturing_both(argv)
 
@@ -31,11 +31,11 @@ RSpec.describe SplitTestRb::CLI do
 
     it 'outputs different files for different nodes' do
       node0_output = capture_stdout do
-        described_class.run(['--xml-path', fixture_dir, '--node-index', '0', '--node-total', '2'])
+        described_class.run(['--json-path', fixture_dir, '--node-index', '0', '--node-total', '2'])
       end
 
       node1_output = capture_stdout do
-        described_class.run(['--xml-path', fixture_dir, '--node-index', '1', '--node-total', '2'])
+        described_class.run(['--json-path', fixture_dir, '--node-index', '1', '--node-total', '2'])
       end
 
       node0_files = node0_output.strip.split("\n")
@@ -59,12 +59,12 @@ RSpec.describe SplitTestRb::CLI do
     it 'exits with status 0 when no test files found' do
       # Temporarily change directory to a location without spec files
       with_temp_test_dir do |tmpdir|
-        # Create empty XML directory
-        xml_dir = File.join(tmpdir, 'xml_results')
-        FileUtils.mkdir_p(xml_dir)
-        File.write(File.join(xml_dir, 'empty.xml'), '<?xml version="1.0"?><testsuites></testsuites>')
+        # Create empty JSON directory
+        json_dir = File.join(tmpdir, 'json_results')
+        FileUtils.mkdir_p(json_dir)
+        File.write(File.join(json_dir, 'empty.json'), '{"examples": []}')
 
-        argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1']
+        argv = ['--json-path', json_dir, '--node-index', '0', '--node-total', '1']
 
         expect do
           expect { described_class.run(argv) }.to raise_error(SystemExit) { |error|
@@ -75,7 +75,7 @@ RSpec.describe SplitTestRb::CLI do
     end
 
     it 'outputs debug information when --debug flag is set' do
-      argv = ['--xml-path', fixture_dir, '--node-index', '0', '--node-total', '2', '--debug']
+      argv = ['--json-path', fixture_dir, '--node-index', '0', '--node-total', '2', '--debug']
 
       output = run_cli_capturing_both(argv)
 
@@ -85,34 +85,34 @@ RSpec.describe SplitTestRb::CLI do
     end
 
     it 'does not output debug information without --debug flag' do
-      argv = ['--xml-path', fixture_dir, '--node-index', '0', '--node-total', '2']
+      argv = ['--json-path', fixture_dir, '--node-index', '0', '--node-total', '2']
 
       output = run_cli_capturing_both(argv)
 
       expect(output[:stderr]).not_to match(/Test Balancing/)
     end
 
-    it 'does not warn when all spec files are in XML' do
+    it 'does not warn when all spec files are in JSON' do
       with_temp_test_dir do
         # Create spec directory and files
         FileUtils.mkdir_p('spec')
         File.write('spec/test1_spec.rb', '# test 1')
         File.write('spec/test2_spec.rb', '# test 2')
 
-        # Create XML directory containing all spec files
-        xml_dir = 'xml_results'
-        FileUtils.mkdir_p(xml_dir)
-        create_xml_file(File.join(xml_dir, 'test.xml'), [
-                          { file: 'spec/test1_spec.rb', time: '1.0' },
-                          { file: 'spec/test2_spec.rb', time: '2.0' }
-                        ])
+        # Create JSON directory containing all spec files
+        json_dir = 'json_results'
+        FileUtils.mkdir_p(json_dir)
+        create_json_file(File.join(json_dir, 'test.json'), [
+                           { file_path: './spec/test1_spec.rb', run_time: 1.0 },
+                           { file_path: './spec/test2_spec.rb', run_time: 2.0 }
+                         ])
 
-        argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1']
+        argv = ['--json-path', json_dir, '--node-index', '0', '--node-total', '1']
 
         output = run_cli_capturing_both(argv)
 
         # Should not warn about missing files
-        expect(output[:stderr]).not_to match(/spec files not in XML/)
+        expect(output[:stderr]).not_to match(/spec files not in JSON/)
       end
     end
 
@@ -123,19 +123,19 @@ RSpec.describe SplitTestRb::CLI do
         File.write('test/user_test.rb', '# test 1')
         File.write('test/post_test.rb', '# test 2')
 
-        # Create XML directory
-        xml_dir = 'xml_results'
-        FileUtils.mkdir_p(xml_dir)
-        create_xml_file(File.join(xml_dir, 'test.xml'), [
-                          { file: 'test/user_test.rb', time: '1.0' }
-                        ])
+        # Create JSON directory
+        json_dir = 'json_results'
+        FileUtils.mkdir_p(json_dir)
+        create_json_file(File.join(json_dir, 'test.json'), [
+                           { file_path: './test/user_test.rb', run_time: 1.0 }
+                         ])
 
-        argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1', '--test-dir', 'test',
+        argv = ['--json-path', json_dir, '--node-index', '0', '--node-total', '1', '--test-dir', 'test',
                 '--test-pattern', '**/*_test.rb']
 
         output = run_cli_capturing_both(argv)
 
-        # Should output both test files (one from XML, one added with default time)
+        # Should output both test files (one from JSON, one added with default time)
         expect(output[:stdout]).to include('test/user_test.rb')
         expect(output[:stdout]).to include('test/post_test.rb')
       end
@@ -148,12 +148,12 @@ RSpec.describe SplitTestRb::CLI do
         File.write('test/unit/user.test.rb', '# test 1')
         File.write('test/unit/post.test.rb', '# test 2')
 
-        # Create empty XML directory
-        xml_dir = 'xml_results'
-        FileUtils.mkdir_p(xml_dir)
-        File.write(File.join(xml_dir, 'empty.xml'), '<?xml version="1.0"?><testsuites></testsuites>')
+        # Create empty JSON directory
+        json_dir = 'json_results'
+        FileUtils.mkdir_p(json_dir)
+        File.write(File.join(json_dir, 'empty.json'), '{"examples": []}')
 
-        argv = ['--xml-path', xml_dir, '--node-index', '0', '--node-total', '1', '--test-dir', 'test',
+        argv = ['--json-path', json_dir, '--node-index', '0', '--node-total', '1', '--test-dir', 'test',
                 '--test-pattern', 'unit/*.test.rb']
 
         output = run_cli_capturing_both(argv)
@@ -176,9 +176,9 @@ RSpec.describe SplitTestRb::CLI do
       expect(options[:total_nodes]).to eq(4)
     end
 
-    it 'parses xml-path option' do
-      options = described_class.parse_options(['--xml-path', 'test.xml'])
-      expect(options[:xml_path]).to eq('test.xml')
+    it 'parses json-path option' do
+      options = described_class.parse_options(['--json-path', 'test.json'])
+      expect(options[:json_path]).to eq('test.json')
     end
 
     it 'parses debug flag' do
@@ -325,15 +325,10 @@ RSpec.describe SplitTestRb::CLI do
     end
   end
 
-  def create_xml_file(path, testcases)
-    xml_content = <<~XML
-      <?xml version="1.0"?>
-      <testsuites>
-        <testsuite>
-          #{testcases.map { |tc| "          <testcase file=\"#{tc[:file]}\" time=\"#{tc[:time]}\"/>" }.join("\n")}
-        </testsuite>
-      </testsuites>
-    XML
-    File.write(path, xml_content)
+  def create_json_file(path, examples)
+    json_content = {
+      examples: examples.map { |ex| { file_path: ex[:file_path], run_time: ex[:run_time] } }
+    }
+    File.write(path, JSON.generate(json_content))
   end
 end

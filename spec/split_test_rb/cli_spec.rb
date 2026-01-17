@@ -1,15 +1,17 @@
 require 'spec_helper'
 
 RSpec.describe SplitTestRb::CLI do
-  let(:fixture_dir) { File.expand_path('../fixtures', __dir__) }
-
   describe '.run' do
     it 'outputs files for specified node' do
-      argv = ['--json-path', fixture_dir, '--node-index', '0', '--node-total', '2']
+      with_temp_test_dir do
+        setup_test_files_with_json
 
-      expect do
-        described_class.run(argv)
-      end.to output(%r{spec/}).to_stdout
+        argv = ['--json-path', 'json_results', '--node-index', '0', '--node-total', '2']
+
+        expect do
+          described_class.run(argv)
+        end.to output(%r{spec/}).to_stdout
+      end
     end
 
     it 'exits with error when json-path is missing' do
@@ -30,30 +32,32 @@ RSpec.describe SplitTestRb::CLI do
     end
 
     it 'outputs different files for different nodes' do
-      node0_output = capture_stdout do
-        described_class.run(['--json-path', fixture_dir, '--node-index', '0', '--node-total', '2'])
+      with_temp_test_dir do
+        setup_test_files_with_json
+
+        node0_output = capture_stdout do
+          described_class.run(['--json-path', 'json_results', '--node-index', '0', '--node-total', '2'])
+        end
+
+        node1_output = capture_stdout do
+          described_class.run(['--json-path', 'json_results', '--node-index', '1', '--node-total', '2'])
+        end
+
+        node0_files = node0_output.strip.split("\n")
+        node1_files = node1_output.strip.split("\n")
+
+        # Files should not overlap
+        expect(node0_files & node1_files).to be_empty
+
+        # Combined should include all files
+        all_files = (node0_files + node1_files).sort
+        expect(all_files).to include(
+          'spec/models/user_spec.rb',
+          'spec/models/post_spec.rb',
+          'spec/controllers/users_controller_spec.rb',
+          'spec/controllers/posts_controller_spec.rb'
+        )
       end
-
-      node1_output = capture_stdout do
-        described_class.run(['--json-path', fixture_dir, '--node-index', '1', '--node-total', '2'])
-      end
-
-      node0_files = node0_output.strip.split("\n")
-      node1_files = node1_output.strip.split("\n")
-
-      # Files should not overlap
-      expect(node0_files & node1_files).to be_empty
-
-      # Combined should include all files
-      all_files = (node0_files + node1_files).sort
-      expect(all_files).to include(
-        'spec/models/user_spec.rb',
-        'spec/models/post_spec.rb',
-        'spec/controllers/users_controller_spec.rb',
-        'spec/controllers/posts_controller_spec.rb',
-        'spec/services/auth_service_spec.rb',
-        'spec/helpers/application_helper_spec.rb'
-      )
     end
 
     it 'exits with status 0 when no test files found' do
@@ -75,21 +79,29 @@ RSpec.describe SplitTestRb::CLI do
     end
 
     it 'outputs debug information when --debug flag is set' do
-      argv = ['--json-path', fixture_dir, '--node-index', '0', '--node-total', '2', '--debug']
+      with_temp_test_dir do
+        setup_test_files_with_json
 
-      output = run_cli_capturing_both(argv)
+        argv = ['--json-path', 'json_results', '--node-index', '0', '--node-total', '2', '--debug']
 
-      expect(output[:stderr]).to match(/Test Balancing/)
-      expect(output[:stderr]).to match(/Node 0:/)
-      expect(output[:stderr]).to match(/Node 1:/)
+        output = run_cli_capturing_both(argv)
+
+        expect(output[:stderr]).to match(/Test Balancing/)
+        expect(output[:stderr]).to match(/Node 0:/)
+        expect(output[:stderr]).to match(/Node 1:/)
+      end
     end
 
     it 'does not output debug information without --debug flag' do
-      argv = ['--json-path', fixture_dir, '--node-index', '0', '--node-total', '2']
+      with_temp_test_dir do
+        setup_test_files_with_json
 
-      output = run_cli_capturing_both(argv)
+        argv = ['--json-path', 'json_results', '--node-index', '0', '--node-total', '2']
 
-      expect(output[:stderr]).not_to match(/Test Balancing/)
+        output = run_cli_capturing_both(argv)
+
+        expect(output[:stderr]).not_to match(/Test Balancing/)
+      end
     end
 
     it 'does not warn when all spec files are in JSON' do
@@ -330,5 +342,26 @@ RSpec.describe SplitTestRb::CLI do
       examples: examples.map { |ex| { file_path: ex[:file_path], run_time: ex[:run_time] } }
     }
     File.write(path, JSON.generate(json_content))
+  end
+
+  # Creates a complete test environment with spec files and matching JSON data
+  # This ensures tests run in isolation without triggering warnings about missing files
+  def setup_test_files_with_json
+    # Create spec directory structure
+    FileUtils.mkdir_p('spec/models')
+    FileUtils.mkdir_p('spec/controllers')
+    File.write('spec/models/user_spec.rb', '# user spec')
+    File.write('spec/models/post_spec.rb', '# post spec')
+    File.write('spec/controllers/users_controller_spec.rb', '# users controller spec')
+    File.write('spec/controllers/posts_controller_spec.rb', '# posts controller spec')
+
+    # Create JSON results that match the spec files
+    FileUtils.mkdir_p('json_results')
+    create_json_file('json_results/results.json', [
+                       { file_path: './spec/models/user_spec.rb', run_time: 2.5 },
+                       { file_path: './spec/models/post_spec.rb', run_time: 3.2 },
+                       { file_path: './spec/controllers/users_controller_spec.rb', run_time: 1.5 },
+                       { file_path: './spec/controllers/posts_controller_spec.rb', run_time: 1.9 }
+                     ])
   end
 end

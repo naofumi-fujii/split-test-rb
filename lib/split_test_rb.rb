@@ -86,11 +86,11 @@ module SplitTestRb
       options = parse_options(argv)
       validate_options!(options)
 
-      timings, default_files = load_timings(options)
+      timings, default_files, json_files = load_timings(options)
       exit_if_no_tests(timings)
 
       nodes = Balancer.balance(timings, options[:total_nodes])
-      print_debug_info(nodes, timings, default_files) if options[:debug]
+      DebugPrinter.print(nodes, timings, default_files, json_files) if options[:debug]
 
       output_node_files(nodes, options[:node_index])
     end
@@ -110,26 +110,33 @@ module SplitTestRb
       else
         warn "Warning: JSON directory not found: #{json_dir}, using all test files with equal execution time"
         timings = find_all_spec_files(options[:test_dir], options[:test_pattern])
-        [timings, Set.new(timings.keys)]
+        [timings, Set.new(timings.keys), []]
       end
     end
 
     def self.load_timings_from_json(json_dir, options)
-      timings = JsonParser.parse_directory(json_dir)
-      default_files = Set.new
-
+      json_files = Dir.glob(File.join(json_dir, '**', '*.json'))
+      timings = JsonParser.parse_files(json_files)
       all_test_files = find_all_spec_files(options[:test_dir], options[:test_pattern])
+      default_files = add_missing_files_with_default_timing(timings, all_test_files)
+
+      [timings, default_files, json_files]
+    end
+
+    # Adds test files missing from JSON results with default timing (1.0s)
+    def self.add_missing_files_with_default_timing(timings, all_test_files)
+      default_files = Set.new
       missing_files = all_test_files.keys - timings.keys
 
-      unless missing_files.empty?
-        warn "Warning: Found #{missing_files.size} test files not in JSON, adding with default execution time"
-        missing_files.each do |file|
-          timings[file] = 1.0
-          default_files.add(file)
-        end
+      return default_files if missing_files.empty?
+
+      warn "Warning: Found #{missing_files.size} test files not in JSON, adding with default execution time"
+      missing_files.each do |file|
+        timings[file] = 1.0
+        default_files.add(file)
       end
 
-      [timings, default_files]
+      default_files
     end
 
     def self.exit_if_no_tests(timings)
@@ -202,10 +209,12 @@ module SplitTestRb
         hash[normalized_path] = 1.0
       end
     end
+  end
 
-    # Outputs debug information about test distribution
+  # Outputs debug information about test distribution
+  module DebugPrinter
     # Shows distribution statistics, timing data sources, and per-node assignments
-    def self.print_debug_info(nodes, timings, default_files)
+    def self.print(nodes, timings, default_files, json_files)
       total_files = timings.size
       total_time = timings.values.sum.round(2)
       files_from_xml = total_files - default_files.size
@@ -213,10 +222,25 @@ module SplitTestRb
 
       warn '=== Test Balancing Debug Info ==='
       warn ''
+      print_loaded_json_files(json_files, timings)
       print_timing_data_source(files_from_xml, default_files.size, total_files, total_time)
       print_load_balance_stats(avg_time, max_deviation)
       print_node_distribution(nodes, variance, timings, default_files)
       warn '===================================='
+    end
+
+    # Prints information about loaded JSON result files
+    def self.print_loaded_json_files(json_files, timings)
+      warn '## Loaded Test Result Files'
+      if json_files.empty?
+        warn '  (no JSON files loaded)'
+      else
+        json_files.each do |file|
+          warn "  - #{file}"
+        end
+        warn "  Total: #{json_files.size} JSON files, #{timings.size} test files extracted"
+      end
+      warn ''
     end
 
     # Calculates load balance statistics across nodes

@@ -1,10 +1,10 @@
 require 'spec_helper'
 
-RSpec.describe SplitTestRb::JunitParser do
+RSpec.describe SplitTestRb::JsonParser do
   describe '.parse' do
-    let(:fixture_path) { File.expand_path('../fixtures/sample_junit.xml', __dir__) }
+    let(:fixture_path) { File.expand_path('../fixtures/sample_rspec.json', __dir__) }
 
-    it 'parses JUnit XML and extracts file timings' do
+    it 'parses RSpec JSON and extracts file timings' do
       timings = described_class.parse(fixture_path)
 
       expect(timings).to be_a(Hash)
@@ -37,10 +37,10 @@ RSpec.describe SplitTestRb::JunitParser do
       expect(timings['spec/services/auth_service_spec.rb']).to eq(0.7)
     end
 
-    context 'with empty XML' do
+    context 'with empty JSON' do
       it 'returns empty hash' do
-        Tempfile.create(['empty', '.xml']) do |file|
-          file.write('<?xml version="1.0"?><testsuites></testsuites>')
+        Tempfile.create(['empty', '.json']) do |file|
+          file.write('{"examples": []}')
           file.rewind
 
           timings = described_class.parse(file.path)
@@ -49,37 +49,29 @@ RSpec.describe SplitTestRb::JunitParser do
       end
     end
 
-    context 'with XML using filepath attribute' do
-      it 'parses filepath attribute as well as file attribute' do
-        Tempfile.create(['filepath', '.xml']) do |file|
-          file.write(<<~XML)
-            <?xml version="1.0"?>
-            <testsuites>
-              <testsuite>
-                <testcase filepath="spec/example_spec.rb" time="1.5"/>
-              </testsuite>
-            </testsuites>
-          XML
+    context 'with JSON missing examples key' do
+      it 'returns empty hash' do
+        Tempfile.create(['no_examples', '.json']) do |file|
+          file.write('{"summary": {}}')
           file.rewind
 
           timings = described_class.parse(file.path)
-          expect(timings['spec/example_spec.rb']).to eq(1.5)
+          expect(timings).to eq({})
         end
       end
     end
 
-    context 'with testcase missing file path attributes' do
-      it 'skips testcases without file or filepath attribute' do
-        Tempfile.create(['no_filepath', '.xml']) do |file|
-          file.write(<<~XML)
-            <?xml version="1.0"?>
-            <testsuites>
-              <testsuite>
-                <testcase name="some test" time="1.5"/>
-                <testcase file="spec/valid_spec.rb" time="2.0"/>
-              </testsuite>
-            </testsuites>
-          XML
+    context 'with example missing file_path' do
+      it 'skips examples without file_path' do
+        Tempfile.create(['no_filepath', '.json']) do |file|
+          file.write(<<~JSON)
+            {
+              "examples": [
+                {"description": "some test", "run_time": 1.5},
+                {"file_path": "./spec/valid_spec.rb", "run_time": 2.0}
+              ]
+            }
+          JSON
           file.rewind
 
           timings = described_class.parse(file.path)
@@ -91,17 +83,16 @@ RSpec.describe SplitTestRb::JunitParser do
 
     context 'with paths starting with ./' do
       it 'normalizes paths by removing leading ./' do
-        Tempfile.create(['dotslash', '.xml']) do |file|
-          file.write(<<~XML)
-            <?xml version="1.0"?>
-            <testsuites>
-              <testsuite>
-                <testcase file="./spec/example1_spec.rb" time="1.0"/>
-                <testcase file="spec/example2_spec.rb" time="2.0"/>
-                <testcase file="./spec/example3_spec.rb" time="3.0"/>
-              </testsuite>
-            </testsuites>
-          XML
+        Tempfile.create(['dotslash', '.json']) do |file|
+          file.write(<<~JSON)
+            {
+              "examples": [
+                {"file_path": "./spec/example1_spec.rb", "run_time": 1.0},
+                {"file_path": "spec/example2_spec.rb", "run_time": 2.0},
+                {"file_path": "./spec/example3_spec.rb", "run_time": 3.0}
+              ]
+            }
+          JSON
           file.rewind
 
           timings = described_class.parse(file.path)
@@ -120,30 +111,28 @@ RSpec.describe SplitTestRb::JunitParser do
   end
 
   describe '.parse_files' do
-    it 'parses multiple XML files and merges results' do
+    it 'parses multiple JSON files and merges results' do
       Dir.mktmpdir do |dir|
-        file1 = File.join(dir, 'result1.xml')
-        file2 = File.join(dir, 'result2.xml')
+        file1 = File.join(dir, 'result1.json')
+        file2 = File.join(dir, 'result2.json')
 
-        File.write(file1, <<~XML)
-          <?xml version="1.0"?>
-          <testsuites>
-            <testsuite>
-              <testcase file="spec/a_spec.rb" time="1.0"/>
-              <testcase file="spec/b_spec.rb" time="2.0"/>
-            </testsuite>
-          </testsuites>
-        XML
+        File.write(file1, <<~JSON)
+          {
+            "examples": [
+              {"file_path": "./spec/a_spec.rb", "run_time": 1.0},
+              {"file_path": "./spec/b_spec.rb", "run_time": 2.0}
+            ]
+          }
+        JSON
 
-        File.write(file2, <<~XML)
-          <?xml version="1.0"?>
-          <testsuites>
-            <testsuite>
-              <testcase file="spec/c_spec.rb" time="3.0"/>
-              <testcase file="spec/a_spec.rb" time="0.5"/>
-            </testsuite>
-          </testsuites>
-        XML
+        File.write(file2, <<~JSON)
+          {
+            "examples": [
+              {"file_path": "./spec/c_spec.rb", "run_time": 3.0},
+              {"file_path": "./spec/a_spec.rb", "run_time": 0.5}
+            ]
+          }
+        JSON
 
         timings = described_class.parse_files([file1, file2])
 
@@ -156,17 +145,16 @@ RSpec.describe SplitTestRb::JunitParser do
 
     it 'skips non-existent files' do
       Dir.mktmpdir do |dir|
-        file1 = File.join(dir, 'result1.xml')
-        non_existent = File.join(dir, 'non_existent.xml')
+        file1 = File.join(dir, 'result1.json')
+        non_existent = File.join(dir, 'non_existent.json')
 
-        File.write(file1, <<~XML)
-          <?xml version="1.0"?>
-          <testsuites>
-            <testsuite>
-              <testcase file="spec/a_spec.rb" time="1.0"/>
-            </testsuite>
-          </testsuites>
-        XML
+        File.write(file1, <<~JSON)
+          {
+            "examples": [
+              {"file_path": "./spec/a_spec.rb", "run_time": 1.0}
+            ]
+          }
+        JSON
 
         timings = described_class.parse_files([file1, non_existent])
 
@@ -182,25 +170,23 @@ RSpec.describe SplitTestRb::JunitParser do
   end
 
   describe '.parse_directory' do
-    it 'parses all XML files in a directory' do
+    it 'parses all JSON files in a directory' do
       Dir.mktmpdir do |dir|
-        File.write(File.join(dir, 'result1.xml'), <<~XML)
-          <?xml version="1.0"?>
-          <testsuites>
-            <testsuite>
-              <testcase file="spec/a_spec.rb" time="1.0"/>
-            </testsuite>
-          </testsuites>
-        XML
+        File.write(File.join(dir, 'result1.json'), <<~JSON)
+          {
+            "examples": [
+              {"file_path": "./spec/a_spec.rb", "run_time": 1.0}
+            ]
+          }
+        JSON
 
-        File.write(File.join(dir, 'result2.xml'), <<~XML)
-          <?xml version="1.0"?>
-          <testsuites>
-            <testsuite>
-              <testcase file="spec/b_spec.rb" time="2.0"/>
-            </testsuite>
-          </testsuites>
-        XML
+        File.write(File.join(dir, 'result2.json'), <<~JSON)
+          {
+            "examples": [
+              {"file_path": "./spec/b_spec.rb", "run_time": 2.0}
+            ]
+          }
+        JSON
 
         timings = described_class.parse_directory(dir)
 
@@ -210,28 +196,26 @@ RSpec.describe SplitTestRb::JunitParser do
       end
     end
 
-    it 'parses XML files in subdirectories' do
+    it 'parses JSON files in subdirectories' do
       Dir.mktmpdir do |dir|
         subdir = File.join(dir, 'subdir')
         FileUtils.mkdir_p(subdir)
 
-        File.write(File.join(dir, 'result1.xml'), <<~XML)
-          <?xml version="1.0"?>
-          <testsuites>
-            <testsuite>
-              <testcase file="spec/a_spec.rb" time="1.0"/>
-            </testsuite>
-          </testsuites>
-        XML
+        File.write(File.join(dir, 'result1.json'), <<~JSON)
+          {
+            "examples": [
+              {"file_path": "./spec/a_spec.rb", "run_time": 1.0}
+            ]
+          }
+        JSON
 
-        File.write(File.join(subdir, 'result2.xml'), <<~XML)
-          <?xml version="1.0"?>
-          <testsuites>
-            <testsuite>
-              <testcase file="spec/b_spec.rb" time="2.0"/>
-            </testsuite>
-          </testsuites>
-        XML
+        File.write(File.join(subdir, 'result2.json'), <<~JSON)
+          {
+            "examples": [
+              {"file_path": "./spec/b_spec.rb", "run_time": 2.0}
+            ]
+          }
+        JSON
 
         timings = described_class.parse_directory(dir)
 

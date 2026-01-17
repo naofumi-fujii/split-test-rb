@@ -88,10 +88,10 @@ jobs:
         mkdir -p tmp/rspec-results
         bundle exec rspec \
           --format progress \
-          --format RspecJunitFormatter \
-          --out tmp/rspec-results/rspec-results-${{ matrix.node_index }}.xml \
+          --format json \
+          --out tmp/rspec-results/rspec-results-${{ matrix.node_index }}.json \
           $(bundle exec split-test-rb \
-            --xml-path tmp/rspec-results/ \
+            --json-path tmp/rspec-results/ \
             --node-index ${{ matrix.node_index }} \
             --node-total 5 \
             --test-dir spec \
@@ -103,7 +103,7 @@ jobs:
       if: always()
       with:
         name: rspec-results-node-${{ matrix.node_index }}
-        path: tmp/rspec-results/rspec-results-${{ matrix.node_index }}.xml
+        path: tmp/rspec-results/rspec-results-${{ matrix.node_index }}.json
 
   cache-test-results:
     runs-on: ubuntu-latest

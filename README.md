@@ -91,7 +91,7 @@ The test directory and pattern options are useful for:
 
 split-test-rb provides intelligent fallback handling to ensure tests can run even without historical timing data:
 
-### When JSON file doesn't exist
+### When RSpec result JSON file doesn't exist
 If the specified JSON file is not found, the tool will:
 - Display a warning: `Warning: JSON directory not found: <path>, using all test files with equal execution time`
 - Find all test files matching the specified directory and pattern (default: `spec/**/*_spec.rb`)

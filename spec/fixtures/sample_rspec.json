@@ -1,0 +1,104 @@
+{
+  "version": "3.13.0",
+  "seed": 12345,
+  "examples": [
+    {
+      "id": "./spec/models/user_spec.rb[1:1]",
+      "description": "validates presence of name",
+      "full_description": "User validates presence of name",
+      "status": "passed",
+      "file_path": "./spec/models/user_spec.rb",
+      "line_number": 3,
+      "run_time": 2.5
+    },
+    {
+      "id": "./spec/models/user_spec.rb[1:2]",
+      "description": "validates uniqueness of email",
+      "full_description": "User validates uniqueness of email",
+      "status": "passed",
+      "file_path": "./spec/models/user_spec.rb",
+      "line_number": 8,
+      "run_time": 1.8
+    },
+    {
+      "id": "./spec/models/post_spec.rb[1:1]",
+      "description": "belongs to user",
+      "full_description": "Post belongs to user",
+      "status": "passed",
+      "file_path": "./spec/models/post_spec.rb",
+      "line_number": 3,
+      "run_time": 3.2
+    },
+    {
+      "id": "./spec/models/post_spec.rb[1:2]",
+      "description": "has many comments",
+      "full_description": "Post has many comments",
+      "status": "passed",
+      "file_path": "./spec/models/post_spec.rb",
+      "line_number": 8,
+      "run_time": 2.1
+    },
+    {
+      "id": "./spec/controllers/users_controller_spec.rb[1:1]",
+      "description": "returns success",
+      "full_description": "GET index returns success",
+      "status": "passed",
+      "file_path": "./spec/controllers/users_controller_spec.rb",
+      "line_number": 3,
+      "run_time": 1.5
+    },
+    {
+      "id": "./spec/controllers/users_controller_spec.rb[1:2]",
+      "description": "creates user",
+      "full_description": "POST create creates user",
+      "status": "passed",
+      "file_path": "./spec/controllers/users_controller_spec.rb",
+      "line_number": 9,
+      "run_time": 0.8
+    },
+    {
+      "id": "./spec/controllers/posts_controller_spec.rb[1:1]",
+      "description": "returns posts",
+      "full_description": "GET index returns posts",
+      "status": "passed",
+      "file_path": "./spec/controllers/posts_controller_spec.rb",
+      "line_number": 3,
+      "run_time": 1.9
+    },
+    {
+      "id": "./spec/services/auth_service_spec.rb[1:1]",
+      "description": "authenticates user",
+      "full_description": "AuthService authenticates user",
+      "status": "passed",
+      "file_path": "./spec/services/auth_service_spec.rb",
+      "line_number": 3,
+      "run_time": 0.7
+    },
+    {
+      "id": "./spec/helpers/application_helper_spec.rb[1:1]",
+      "description": "formats date",
+      "full_description": "ApplicationHelper formats date",
+      "status": "passed",
+      "file_path": "./spec/helpers/application_helper_spec.rb",
+      "line_number": 3,
+      "run_time": 0.5
+    },
+    {
+      "id": "./spec/helpers/application_helper_spec.rb[1:2]",
+      "description": "sanitizes input",
+      "full_description": "ApplicationHelper sanitizes input",
+      "status": "passed",
+      "file_path": "./spec/helpers/application_helper_spec.rb",
+      "line_number": 8,
+      "run_time": 0.5
+    }
+  ],
+  "summary": {
+    "duration": 15.5,
+    "example_count": 10,
+    "failure_count": 0,
+    "pending_count": 0,
+    "errors_outside_of_examples_count": 0
+  },
+  "summary_line": "10 examples, 0 failures"
+}

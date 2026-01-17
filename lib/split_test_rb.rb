@@ -1,5 +1,6 @@
 require 'nokogiri'
 require 'optparse'
+require 'json'
 
 module SplitTestRb
   # Parses JUnit XML files and extracts test timing data
@@ -41,6 +42,63 @@ module SplitTestRb
         next unless File.exist?(xml_path)
 
         file_timings = parse(xml_path)
+        file_timings.each do |file, time|
+          timings[file] ||= 0
+          timings[file] += time
+        end
+      end
+
+      timings
+    end
+
+    # Normalizes file path by removing leading ./
+    def self.normalize_path(path)
+      path.sub(%r{^\./}, '')
+    end
+  end
+
+  # Parses RSpec JSON files and extracts test timing data
+  class JsonParser
+    # Parses RSpec JSON file and returns hash of {file_path => execution_time}
+    def self.parse(json_path)
+      json_data = File.read(json_path)
+      data = JSON.parse(json_data)
+      timings = {}
+
+      # Extract examples array from JSON
+      examples = data['examples'] || []
+
+      examples.each do |example|
+        file_path = example['file_path']
+        run_time = example['run_time'].to_f
+
+        next unless file_path
+
+        # Normalize path to ensure consistent format (remove leading ./)
+        file_path = normalize_path(file_path)
+
+        # Aggregate timing for files (sum if multiple examples from same file)
+        timings[file_path] ||= 0
+        timings[file_path] += run_time
+      end
+
+      timings
+    end
+
+    # Parses all JSON files in a directory and merges results
+    def self.parse_directory(dir_path)
+      json_files = Dir.glob(File.join(dir_path, '**', '*.json'))
+      parse_files(json_files)
+    end
+
+    # Parses multiple JSON files and merges results
+    def self.parse_files(json_paths)
+      timings = {}
+
+      json_paths.each do |json_path|
+        next unless File.exist?(json_path)
+
+        file_timings = parse(json_path)
         file_timings.each do |file, time|
           timings[file] ||= 0
           timings[file] += time
@@ -102,26 +160,38 @@ module SplitTestRb
     end
 
     def self.load_timings(options)
-      xml_dir = options[:xml_path]
+      results_dir = options[:xml_path]
 
-      if File.directory?(xml_dir)
-        load_timings_from_xml(xml_dir, options)
+      if File.directory?(results_dir)
+        load_timings_from_directory(results_dir, options)
       else
-        warn "Warning: XML directory not found: #{xml_dir}, using all test files with equal execution time"
+        warn "Warning: Results directory not found: #{results_dir}, using all test files with equal execution time"
         timings = find_all_spec_files(options[:test_dir], options[:test_pattern])
         [timings, Set.new(timings.keys)]
       end
     end
 
-    def self.load_timings_from_xml(xml_dir, options)
-      timings = JunitParser.parse_directory(xml_dir)
+    def self.load_timings_from_directory(results_dir, options)
+      # Auto-detect format based on file extensions in directory
+      xml_files = Dir.glob(File.join(results_dir, '**', '*.xml'))
+      json_files = Dir.glob(File.join(results_dir, '**', '*.json'))
+
+      timings = if !json_files.empty?
+                  JsonParser.parse_directory(results_dir)
+                elsif !xml_files.empty?
+                  JunitParser.parse_directory(results_dir)
+                else
+                  {}
+                end
+
       default_files = Set.new
 
       all_test_files = find_all_spec_files(options[:test_dir], options[:test_pattern])
       missing_files = all_test_files.keys - timings.keys
 
       unless missing_files.empty?
-        warn "Warning: Found #{missing_files.size} test files not in XML, adding with default execution time"
+        format_type = !json_files.empty? ? 'JSON' : 'XML'
+        warn "Warning: Found #{missing_files.size} test files not in #{format_type}, adding with default execution time"
         missing_files.each do |file|
           timings[file] = 1.0
           default_files.add(file)
@@ -177,7 +247,9 @@ module SplitTestRb
     def self.define_node_options(opts, options)
       opts.on('--node-index INDEX', Integer, 'Current node index (0-based)') { |v| options[:node_index] = v }
       opts.on('--node-total TOTAL', Integer, 'Total number of nodes') { |v| options[:total_nodes] = v }
-      opts.on('--xml-path PATH', 'Path to directory containing JUnit XML reports') { |v| options[:xml_path] = v }
+      opts.on('--xml-path PATH', 'Path to directory containing test results (JUnit XML or RSpec JSON)') do |v|
+        options[:xml_path] = v
+      end
     end
 
     # Defines test configuration and utility CLI options

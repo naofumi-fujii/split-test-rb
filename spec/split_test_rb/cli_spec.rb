@@ -175,6 +175,22 @@ RSpec.describe SplitTestRb::CLI do
         expect(output[:stdout]).to include('test/unit/post.test.rb')
       end
     end
+
+    it 'outputs version and exits with --version flag' do
+      expect do
+        expect { described_class.run(['--version']) }.to raise_error(SystemExit) { |error|
+          expect(error.status).to eq(0)
+        }
+      end.to output("split-test-rb #{SplitTestRb::VERSION}\n").to_stdout
+    end
+
+    it 'outputs version and exits with -v flag' do
+      expect do
+        expect { described_class.run(['-v']) }.to raise_error(SystemExit) { |error|
+          expect(error.status).to eq(0)
+        }
+      end.to output("split-test-rb #{SplitTestRb::VERSION}\n").to_stdout
+    end
   end
 
   describe '.parse_options' do

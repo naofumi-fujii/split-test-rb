@@ -113,6 +113,9 @@ jobs:
     steps:
     - uses: actions/checkout@v6
 
+    - name: Set timestamp
+      run: echo "TIMESTAMP=$(date +%s)" >> $GITHUB_ENV
+
     - name: Download all test results
       uses: actions/download-artifact@v7
       with:
@@ -130,4 +133,4 @@ jobs:
       uses: actions/cache/save@v5
       with:
         path: tmp/rspec-results/
-        key: rspec-results-v1-${{ github.ref }}-${{ github.run_id }}
+        key: rspec-results-v1-${{ github.ref }}-${{ github.run_id }}-${{ env.TIMESTAMP }}

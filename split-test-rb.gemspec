@@ -1,6 +1,8 @@
+require_relative 'lib/split_test_rb/version'
+
 Gem::Specification.new do |spec|
   spec.name          = 'split-test-rb'
-  spec.version       = '0.1.0'
+  spec.version       = SplitTestRb::VERSION
   spec.authors       = ['Naofumi Fujii']
   spec.summary       = 'Split tests across multiple nodes based on timing data'
   spec.description   = 'A simple CLI tool to balance RSpec tests across parallel CI nodes using RSpec JSON reports'

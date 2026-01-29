@@ -1,5 +1,6 @@
 require 'json'
 require 'optparse'
+require_relative 'split_test_rb/version'
 
 module SplitTestRb
   # Parses RSpec JSON result files and extracts test timing data
@@ -195,6 +196,10 @@ module SplitTestRb
       opts.on('--debug', 'Show debug information') { options[:debug] = true }
       opts.on('-h', '--help', 'Show this help message') do
         puts opts
+        exit
+      end
+      opts.on('-v', '--version', 'Show version') do
+        puts "split-test-rb #{VERSION}"
         exit
       end
     end

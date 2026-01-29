@@ -79,7 +79,7 @@ jobs:
       uses: actions/cache/restore@v5
       with:
         path: tmp/rspec-results/
-        key: rspec-results-v1-${{ github.ref }}-
+        key: rspec-results-v1-${{ github.ref }}-${{ github.run_id }}
         restore-keys: |
           rspec-results-v1-${{ github.ref }}-
           rspec-results-v1-refs/heads/main-
@@ -133,4 +133,4 @@ jobs:
       uses: actions/cache/save@v5
       with:
         path: tmp/rspec-results/
-        key: rspec-results-v1-${{ github.ref }}-${{ env.TIMESTAMP }}
+        key: rspec-results-v1-${{ github.ref }}-${{ github.run_id }}-${{ env.TIMESTAMP }}

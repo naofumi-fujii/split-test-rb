@@ -167,6 +167,51 @@ RSpec.describe SplitTestRb::JsonParser do
       timings = described_class.parse_files([])
       expect(timings).to eq({})
     end
+
+    it 'skips empty files' do
+      Dir.mktmpdir do |dir|
+        file1 = File.join(dir, 'result1.json')
+        empty_file = File.join(dir, 'empty.json')
+
+        File.write(file1, <<~JSON)
+          {
+            "examples": [
+              {"file_path": "./spec/a_spec.rb", "run_time": 1.0}
+            ]
+          }
+        JSON
+
+        File.write(empty_file, '')
+
+        timings = described_class.parse_files([file1, empty_file])
+
+        expect(timings.keys).to contain_exactly('spec/a_spec.rb')
+        expect(timings['spec/a_spec.rb']).to eq(1.0)
+      end
+    end
+
+    it 'skips files with invalid JSON and outputs warning' do
+      Dir.mktmpdir do |dir|
+        file1 = File.join(dir, 'result1.json')
+        invalid_file = File.join(dir, 'invalid.json')
+
+        File.write(file1, <<~JSON)
+          {
+            "examples": [
+              {"file_path": "./spec/a_spec.rb", "run_time": 1.0}
+            ]
+          }
+        JSON
+
+        File.write(invalid_file, 'invalid json content')
+
+        expect {
+          timings = described_class.parse_files([file1, invalid_file])
+          expect(timings.keys).to contain_exactly('spec/a_spec.rb')
+          expect(timings['spec/a_spec.rb']).to eq(1.0)
+        }.to output(/Warning: Failed to parse.*invalid\.json/).to_stderr
+      end
+    end
   end
 
   describe '.parse_directory' do

@@ -41,11 +41,16 @@ module SplitTestRb
 
       json_paths.each do |json_path|
         next unless File.exist?(json_path)
+        next if File.zero?(json_path)
 
-        file_timings = parse(json_path)
-        file_timings.each do |file, time|
-          timings[file] ||= 0
-          timings[file] += time
+        begin
+          file_timings = parse(json_path)
+          file_timings.each do |file, time|
+            timings[file] ||= 0
+            timings[file] += time
+          end
+        rescue JSON::ParserError => e
+          warn "Warning: Failed to parse #{json_path}: #{e.message}"
         end
       end
 

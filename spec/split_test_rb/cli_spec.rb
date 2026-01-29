@@ -176,6 +176,36 @@ RSpec.describe SplitTestRb::CLI do
       end
     end
 
+    it 'filters out files from JSON cache that do not match test pattern' do
+      with_temp_test_dir do
+        # Create spec directory and files
+        FileUtils.mkdir_p('spec')
+        FileUtils.mkdir_p('spec/support')
+        File.write('spec/test1_spec.rb', '# test 1')
+        File.write('spec/test2_spec.rb', '# test 2')
+        File.write('spec/support/shared_example.rb', '# shared example - not a spec file')
+
+        # Create JSON directory containing files that don't match the pattern
+        json_dir = 'json_results'
+        FileUtils.mkdir_p(json_dir)
+        create_json_file(File.join(json_dir, 'test.json'), [
+                           { file_path: './spec/test1_spec.rb', run_time: 1.0 },
+                           { file_path: './spec/test2_spec.rb', run_time: 2.0 },
+                           { file_path: './spec/support/shared_example.rb', run_time: 0.5 }
+                         ])
+
+        argv = ['--json-path', json_dir, '--node-index', '0', '--node-total', '1']
+
+        output = run_cli_capturing_both(argv)
+
+        # Should output only spec files matching the pattern
+        expect(output[:stdout]).to include('spec/test1_spec.rb')
+        expect(output[:stdout]).to include('spec/test2_spec.rb')
+        # Should NOT include the shared example file
+        expect(output[:stdout]).not_to include('spec/support/shared_example.rb')
+      end
+    end
+
     it 'outputs version and exits with --version flag' do
       expect do
         expect { described_class.run(['--version']) }.to raise_error(SystemExit) { |error|

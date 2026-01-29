@@ -205,11 +205,11 @@ RSpec.describe SplitTestRb::JsonParser do
 
         File.write(invalid_file, 'invalid json content')
 
-        expect {
+        expect do
           timings = described_class.parse_files([file1, invalid_file])
           expect(timings.keys).to contain_exactly('spec/a_spec.rb')
           expect(timings['spec/a_spec.rb']).to eq(1.0)
-        }.to output(/Warning: Failed to parse.*invalid\.json/).to_stderr
+        end.to output(/Warning: Failed to parse.*invalid\.json/).to_stderr
       end
     end
   end

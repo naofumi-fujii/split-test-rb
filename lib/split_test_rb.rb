@@ -41,7 +41,7 @@ module SplitTestRb
 
       json_paths.each do |json_path|
         next unless File.exist?(json_path)
-        next if File.zero?(json_path)
+        next if File.empty?(json_path)
 
         begin
           file_timings = parse(json_path)

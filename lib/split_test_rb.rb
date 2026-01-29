@@ -119,6 +119,10 @@ module SplitTestRb
       json_files = Dir.glob(File.join(json_dir, '**', '*.json'))
       timings = JsonParser.parse_files(json_files)
       all_test_files = find_all_spec_files(options[:test_dir], options[:test_pattern])
+
+      # Filter out files from JSON cache that don't match the test pattern
+      timings.select! { |file, _| all_test_files.key?(file) }
+
       default_files = add_missing_files_with_default_timing(timings, all_test_files)
 
       [timings, default_files, json_files]

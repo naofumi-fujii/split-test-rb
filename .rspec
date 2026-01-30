@@ -1,2 +1,3 @@
 --require spec_helper
---format progress
+--require split_test_rb/rspec_formatter
+--format SplitTestRb::RSpecFormatter

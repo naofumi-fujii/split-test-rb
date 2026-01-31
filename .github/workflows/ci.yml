@@ -79,7 +79,7 @@ jobs:
       uses: actions/cache/restore@v5
       with:
         path: tmp/rspec-results/
-        key: rspec-results-v1-${{ github.ref }}-${{ github.run_id }}
+        key: rspec-results-v1-${{ github.ref }}-${{ github.sha }}-${{ github.run_attempt }}
         restore-keys: |
           rspec-results-v1-${{ github.ref }}-
           rspec-results-v1-refs/heads/main-

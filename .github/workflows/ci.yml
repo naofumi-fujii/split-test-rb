@@ -97,7 +97,7 @@ jobs:
             --node-total 5 \
             --test-dir spec \
             --test-pattern '**/*_spec.rb' \
-            --exclude-pattern '**/dummy/**' \
+            --exclude-pattern '**/excluded/**' \
             --debug)
 
     - name: Upload test results

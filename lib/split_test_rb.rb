@@ -115,7 +115,7 @@ module SplitTestRb
         load_timings_from_json(json_dir, options)
       else
         warn "Warning: JSON directory not found: #{json_dir}, using all test files with equal execution time"
-        timings = find_all_spec_files(options[:test_dir], options[:test_pattern])
+        timings = find_all_spec_files(options[:test_dir], options[:test_pattern], options[:exclude_patterns])
         [timings, Set.new(timings.keys), []]
       end
     end
@@ -123,7 +123,7 @@ module SplitTestRb
     def self.load_timings_from_json(json_dir, options)
       json_files = Dir.glob(File.join(json_dir, '**', '*.json'))
       timings = JsonParser.parse_files(json_files)
-      all_test_files = find_all_spec_files(options[:test_dir], options[:test_pattern])
+      all_test_files = find_all_spec_files(options[:test_dir], options[:test_pattern], options[:exclude_patterns])
 
       # Filter out files from JSON cache that don't match the test pattern
       timings.select! { |file, _| all_test_files.key?(file) }
@@ -167,12 +167,14 @@ module SplitTestRb
       total_nodes: 1,
       debug: false,
       test_dir: 'spec',
-      test_pattern: '**/*_spec.rb'
+      test_pattern: '**/*_spec.rb',
+      exclude_patterns: []
     }.freeze
 
     # Parses command-line arguments and returns options hash
     def self.parse_options(argv)
       options = DEFAULT_OPTIONS.dup
+      options[:exclude_patterns] = [] # Create new array to avoid mutation of DEFAULT_OPTIONS
       build_option_parser(options).parse!(argv)
       options
     end
@@ -202,6 +204,9 @@ module SplitTestRb
     def self.define_test_options(opts, options)
       opts.on('--test-dir DIR', 'Test directory (default: spec)') { |v| options[:test_dir] = v }
       opts.on('--test-pattern PATTERN', 'Test file pattern (default: **/*_spec.rb)') { |v| options[:test_pattern] = v }
+      opts.on('--exclude-pattern PATTERN', 'Pattern to exclude (can be specified multiple times)') do |v|
+        options[:exclude_patterns] << v
+      end
       opts.on('--debug', 'Show debug information') { options[:debug] = true }
       opts.on('-h', '--help', 'Show this help message') do
         puts opts
@@ -213,10 +218,18 @@ module SplitTestRb
       end
     end
 
-    def self.find_all_spec_files(test_dir = 'spec', test_pattern = '**/*_spec.rb')
+    def self.find_all_spec_files(test_dir = 'spec', test_pattern = '**/*_spec.rb', exclude_patterns = [])
       # Find all test files in the specified directory with the given pattern
       glob_pattern = File.join(test_dir, test_pattern)
       test_files = Dir.glob(glob_pattern)
+
+      # Filter out files matching any exclude pattern
+      unless exclude_patterns.empty?
+        test_files = test_files.reject do |file|
+          exclude_patterns.any? { |pattern| File.fnmatch(pattern, file, File::FNM_PATHNAME) }
+        end
+      end
+
       # Normalize paths and assign equal execution time (1.0) to each file
       test_files.each_with_object({}) do |file, hash|
         normalized_path = JsonParser.normalize_path(file)

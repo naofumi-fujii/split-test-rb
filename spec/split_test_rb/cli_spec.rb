@@ -206,6 +206,90 @@ RSpec.describe SplitTestRb::CLI do
       end
     end
 
+    it 'excludes files matching --exclude-pattern' do
+      with_temp_test_dir do
+        # Create spec directory with slow directory
+        FileUtils.mkdir_p('spec/models')
+        FileUtils.mkdir_p('spec/slow')
+        File.write('spec/models/user_spec.rb', '# user spec')
+        File.write('spec/models/post_spec.rb', '# post spec')
+        File.write('spec/slow/heavy_spec.rb', '# slow spec')
+
+        # Create JSON directory
+        json_dir = 'json_results'
+        FileUtils.mkdir_p(json_dir)
+        create_json_file(File.join(json_dir, 'test.json'), [
+                           { file_path: './spec/models/user_spec.rb', run_time: 1.0 },
+                           { file_path: './spec/models/post_spec.rb', run_time: 2.0 },
+                           { file_path: './spec/slow/heavy_spec.rb', run_time: 10.0 }
+                         ])
+
+        argv = ['--json-path', json_dir, '--node-index', '0', '--node-total', '1',
+                '--exclude-pattern', '**/slow/**']
+
+        output = run_cli_capturing_both(argv)
+
+        # Should output regular spec files
+        expect(output[:stdout]).to include('spec/models/user_spec.rb')
+        expect(output[:stdout]).to include('spec/models/post_spec.rb')
+        # Should NOT include the slow spec file
+        expect(output[:stdout]).not_to include('spec/slow/heavy_spec.rb')
+      end
+    end
+
+    it 'supports multiple --exclude-pattern options' do
+      with_temp_test_dir do
+        # Create spec directory with various patterns
+        FileUtils.mkdir_p('spec/models')
+        FileUtils.mkdir_p('spec/slow')
+        FileUtils.mkdir_p('spec/integration')
+        File.write('spec/models/user_spec.rb', '# user spec')
+        File.write('spec/slow/heavy_spec.rb', '# slow spec')
+        File.write('spec/integration/api_spec.rb', '# integration spec')
+
+        # Create JSON directory
+        json_dir = 'json_results'
+        FileUtils.mkdir_p(json_dir)
+        create_json_file(File.join(json_dir, 'test.json'), [
+                           { file_path: './spec/models/user_spec.rb', run_time: 1.0 },
+                           { file_path: './spec/slow/heavy_spec.rb', run_time: 10.0 },
+                           { file_path: './spec/integration/api_spec.rb', run_time: 5.0 }
+                         ])
+
+        argv = ['--json-path', json_dir, '--node-index', '0', '--node-total', '1',
+                '--exclude-pattern', '**/slow/**',
+                '--exclude-pattern', '**/integration/**']
+
+        output = run_cli_capturing_both(argv)
+
+        # Should output only the models spec
+        expect(output[:stdout]).to include('spec/models/user_spec.rb')
+        # Should NOT include excluded files
+        expect(output[:stdout]).not_to include('spec/slow/heavy_spec.rb')
+        expect(output[:stdout]).not_to include('spec/integration/api_spec.rb')
+      end
+    end
+
+    it 'excludes files when JSON directory does not exist' do
+      with_temp_test_dir do
+        # Create spec directory with slow directory
+        FileUtils.mkdir_p('spec/models')
+        FileUtils.mkdir_p('spec/slow')
+        File.write('spec/models/user_spec.rb', '# user spec')
+        File.write('spec/slow/heavy_spec.rb', '# slow spec')
+
+        argv = ['--json-path', 'nonexistent_dir', '--node-index', '0', '--node-total', '1',
+                '--exclude-pattern', '**/slow/**']
+
+        output = run_cli_capturing_both(argv)
+
+        # Should output regular spec files
+        expect(output[:stdout]).to include('spec/models/user_spec.rb')
+        # Should NOT include the slow spec file
+        expect(output[:stdout]).not_to include('spec/slow/heavy_spec.rb')
+      end
+    end
+
     it 'outputs version and exits with --version flag' do
       expect do
         expect { described_class.run(['--version']) }.to raise_error(SystemExit) { |error|
@@ -254,6 +338,19 @@ RSpec.describe SplitTestRb::CLI do
       expect(options[:test_pattern]).to eq('**/*_test.rb')
     end
 
+    it 'parses single exclude-pattern option' do
+      options = described_class.parse_options(['--exclude-pattern', '**/slow/**'])
+      expect(options[:exclude_patterns]).to eq(['**/slow/**'])
+    end
+
+    it 'parses multiple exclude-pattern options' do
+      options = described_class.parse_options([
+                                                '--exclude-pattern', '**/slow/**',
+                                                '--exclude-pattern', '**/integration/**'
+                                              ])
+      expect(options[:exclude_patterns]).to eq(['**/slow/**', '**/integration/**'])
+    end
+
     it 'sets default values' do
       options = described_class.parse_options([])
       expect(options[:node_index]).to eq(0)
@@ -261,6 +358,7 @@ RSpec.describe SplitTestRb::CLI do
       expect(options[:debug]).to be false
       expect(options[:test_dir]).to eq('spec')
       expect(options[:test_pattern]).to eq('**/*_spec.rb')
+      expect(options[:exclude_patterns]).to eq([])
     end
   end
 

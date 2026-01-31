@@ -49,6 +49,7 @@ Options:
   --json-path PATH            Path to directory containing RSpec JSON reports (required)
   --test-dir DIR              Test directory (default: spec)
   --test-pattern PATTERN      Test file pattern (default: **/*_spec.rb)
+  --exclude-pattern PATTERN   Pattern to exclude (can be specified multiple times)
   --debug                     Show debug information
   -h, --help                  Show help message
 ```
@@ -80,6 +81,33 @@ The test directory and pattern options are useful for:
 - Custom test directory structures
 - Different naming conventions for test files
 - Monorepos with multiple test suites
+
+### Excluding Specific Files or Directories
+
+Use `--exclude-pattern` to exclude specific files or directories from test distribution. This is useful when you want to exclude slow tests or integration tests from parallel execution:
+
+```bash
+split-test-rb --json-path tmp/test-results \
+  --node-index $CI_NODE_INDEX \
+  --node-total $CI_NODE_TOTAL \
+  --exclude-pattern '**/slow/**'
+```
+
+You can specify multiple exclude patterns:
+
+```bash
+split-test-rb --json-path tmp/test-results \
+  --node-index $CI_NODE_INDEX \
+  --node-total $CI_NODE_TOTAL \
+  --exclude-pattern '**/slow/**' \
+  --exclude-pattern '**/integration/**' \
+  --exclude-pattern '**/*_slow_spec.rb'
+```
+
+This is useful for:
+- Excluding slow feature specs from distribution on feature branches
+- Excluding specific directories or file patterns
+- Complementing RSpec's tag-based filtering with file-level exclusion
 
 ## How It Works
 

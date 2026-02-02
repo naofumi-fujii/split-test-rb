@@ -1,0 +1,27 @@
+# octocov configuration for split-test-rb
+# See: https://github.com/k1LoW/octocov
+
+coverage:
+  paths:
+    - coverage/.resultset.json
+
+codeToTestRatio:
+  code:
+    - 'lib/**/*.rb'
+  test:
+    - 'spec/**/*_spec.rb'
+
+testExecutionTime:
+  if: true
+
+comment:
+  if: is_pull_request
+
+diff:
+  datastores:
+    - artifact://${GITHUB_REPOSITORY}
+
+report:
+  if: is_default_branch
+  datastores:
+    - artifact://${GITHUB_REPOSITORY}

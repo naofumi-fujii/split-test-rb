@@ -261,6 +261,118 @@ RSpec.describe SplitTestRb::CLI do
       expect(options[:debug]).to be false
       expect(options[:test_dir]).to eq('spec')
       expect(options[:test_pattern]).to eq('**/*_spec.rb')
+      expect(options[:split_by_example_threshold]).to be_nil
+    end
+
+    it 'parses split-by-example-threshold option' do
+      options = described_class.parse_options(['--split-by-example-threshold', '10.5'])
+      expect(options[:split_by_example_threshold]).to eq(10.5)
+    end
+  end
+
+  describe '.apply_example_splitting' do
+    it 'splits heavy files into individual examples' do
+      with_temp_test_dir do
+        # Create JSON with timing data
+        json_dir = 'json_results'
+        FileUtils.mkdir_p(json_dir)
+        File.write(File.join(json_dir, 'test.json'), <<~JSON)
+          {
+            "examples": [
+              {"id": "./spec/heavy_spec.rb[1:1]", "file_path": "./spec/heavy_spec.rb", "run_time": 3.0},
+              {"id": "./spec/heavy_spec.rb[1:2]", "file_path": "./spec/heavy_spec.rb", "run_time": 2.0},
+              {"id": "./spec/light_spec.rb[1:1]", "file_path": "./spec/light_spec.rb", "run_time": 1.0}
+            ]
+          }
+        JSON
+
+        json_files = [File.join(json_dir, 'test.json')]
+        file_timings = {
+          'spec/heavy_spec.rb' => 5.0,
+          'spec/light_spec.rb' => 1.0
+        }
+
+        # Split files with >= 4.0s threshold
+        result = described_class.apply_example_splitting(file_timings, json_files, 4.0)
+
+        # Heavy file should be split into examples
+        expect(result.keys).to include('spec/heavy_spec.rb[1:1]', 'spec/heavy_spec.rb[1:2]')
+        expect(result['spec/heavy_spec.rb[1:1]']).to eq(3.0)
+        expect(result['spec/heavy_spec.rb[1:2]']).to eq(2.0)
+
+        # Light file should remain as-is
+        expect(result.keys).to include('spec/light_spec.rb')
+        expect(result['spec/light_spec.rb']).to eq(1.0)
+
+        # Heavy file should not appear as a whole file
+        expect(result.keys).not_to include('spec/heavy_spec.rb')
+      end
+    end
+
+    it 'returns original timings when no files exceed threshold' do
+      with_temp_test_dir do
+        json_dir = 'json_results'
+        FileUtils.mkdir_p(json_dir)
+        File.write(File.join(json_dir, 'test.json'), <<~JSON)
+          {
+            "examples": [
+              {"id": "./spec/a_spec.rb[1:1]", "run_time": 1.0},
+              {"id": "./spec/b_spec.rb[1:1]", "run_time": 2.0}
+            ]
+          }
+        JSON
+
+        json_files = [File.join(json_dir, 'test.json')]
+        file_timings = {
+          'spec/a_spec.rb' => 1.0,
+          'spec/b_spec.rb' => 2.0
+        }
+
+        # Threshold higher than all files
+        result = described_class.apply_example_splitting(file_timings, json_files, 10.0)
+
+        expect(result).to eq(file_timings)
+      end
+    end
+  end
+
+  describe '--split-by-example-threshold integration' do
+    it 'outputs individual examples for heavy files' do
+      with_temp_test_dir do
+        # Create spec files
+        FileUtils.mkdir_p('spec')
+        File.write('spec/heavy_spec.rb', '# heavy spec')
+        File.write('spec/light_spec.rb', '# light spec')
+
+        # Create JSON with timing data
+        json_dir = 'json_results'
+        FileUtils.mkdir_p(json_dir)
+        File.write(File.join(json_dir, 'test.json'), <<~JSON)
+          {
+            "examples": [
+              {"id": "./spec/heavy_spec.rb[1:1]", "file_path": "./spec/heavy_spec.rb", "run_time": 3.0},
+              {"id": "./spec/heavy_spec.rb[1:2]", "file_path": "./spec/heavy_spec.rb", "run_time": 2.5},
+              {"id": "./spec/light_spec.rb[1:1]", "file_path": "./spec/light_spec.rb", "run_time": 1.0}
+            ]
+          }
+        JSON
+
+        argv = ['--json-path', json_dir, '--node-index', '0', '--node-total', '1',
+                '--split-by-example-threshold', '4.0']
+
+        output = run_cli_capturing_both(argv)
+
+        # Heavy file (5.5s total) should be split into examples
+        expect(output[:stdout]).to include('spec/heavy_spec.rb[1:1]')
+        expect(output[:stdout]).to include('spec/heavy_spec.rb[1:2]')
+
+        # Light file should remain as-is
+        expect(output[:stdout]).to include('spec/light_spec.rb')
+
+        # Heavy file should NOT appear as a whole file
+        lines = output[:stdout].strip.split("\n")
+        expect(lines).not_to include('spec/heavy_spec.rb')
+      end
     end
   end
 

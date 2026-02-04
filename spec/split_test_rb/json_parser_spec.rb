@@ -354,4 +354,115 @@ RSpec.describe SplitTestRb::JsonParser do
       expect(described_class.normalize_path('spec/./models/user_spec.rb')).to eq('spec/./models/user_spec.rb')
     end
   end
+
+  describe '.parse_with_examples' do
+    let(:fixture_path) { File.expand_path('../fixtures/sample_rspec.json', __dir__) }
+
+    it 'parses RSpec JSON and returns individual example timings' do
+      timings = described_class.parse_with_examples(fixture_path)
+
+      expect(timings).to be_a(Hash)
+      expect(timings.keys).to include(
+        'spec/models/user_spec.rb[1:1]',
+        'spec/models/user_spec.rb[1:2]',
+        'spec/models/post_spec.rb[1:1]',
+        'spec/models/post_spec.rb[1:2]'
+      )
+    end
+
+    it 'returns timing for each individual example' do
+      timings = described_class.parse_with_examples(fixture_path)
+
+      expect(timings['spec/models/user_spec.rb[1:1]']).to eq(2.5)
+      expect(timings['spec/models/user_spec.rb[1:2]']).to eq(1.8)
+      expect(timings['spec/models/post_spec.rb[1:1]']).to eq(3.2)
+      expect(timings['spec/models/post_spec.rb[1:2]']).to eq(2.1)
+    end
+
+    it 'normalizes paths by removing leading ./' do
+      timings = described_class.parse_with_examples(fixture_path)
+
+      timings.each_key do |key|
+        expect(key).not_to start_with('./')
+      end
+    end
+
+    context 'with example missing id' do
+      it 'skips examples without id' do
+        Tempfile.create(['no_id', '.json']) do |file|
+          file.write(<<~JSON)
+            {
+              "examples": [
+                {"description": "some test", "file_path": "./spec/a_spec.rb", "run_time": 1.5},
+                {"id": "./spec/valid_spec.rb[1:1]", "run_time": 2.0}
+              ]
+            }
+          JSON
+          file.rewind
+
+          timings = described_class.parse_with_examples(file.path)
+          expect(timings.keys).to contain_exactly('spec/valid_spec.rb[1:1]')
+          expect(timings['spec/valid_spec.rb[1:1]']).to eq(2.0)
+        end
+      end
+    end
+  end
+
+  describe '.parse_files_with_examples' do
+    it 'parses multiple JSON files and returns individual example timings' do
+      Dir.mktmpdir do |dir|
+        file1 = File.join(dir, 'result1.json')
+        file2 = File.join(dir, 'result2.json')
+
+        File.write(file1, <<~JSON)
+          {
+            "examples": [
+              {"id": "./spec/a_spec.rb[1:1]", "run_time": 1.0},
+              {"id": "./spec/a_spec.rb[1:2]", "run_time": 2.0}
+            ]
+          }
+        JSON
+
+        File.write(file2, <<~JSON)
+          {
+            "examples": [
+              {"id": "./spec/b_spec.rb[1:1]", "run_time": 3.0}
+            ]
+          }
+        JSON
+
+        timings = described_class.parse_files_with_examples([file1, file2])
+
+        expect(timings.keys).to contain_exactly(
+          'spec/a_spec.rb[1:1]',
+          'spec/a_spec.rb[1:2]',
+          'spec/b_spec.rb[1:1]'
+        )
+        expect(timings['spec/a_spec.rb[1:1]']).to eq(1.0)
+        expect(timings['spec/a_spec.rb[1:2]']).to eq(2.0)
+        expect(timings['spec/b_spec.rb[1:1]']).to eq(3.0)
+      end
+    end
+
+    it 'skips non-existent and empty files' do
+      Dir.mktmpdir do |dir|
+        file1 = File.join(dir, 'result1.json')
+        empty_file = File.join(dir, 'empty.json')
+        non_existent = File.join(dir, 'non_existent.json')
+
+        File.write(file1, <<~JSON)
+          {
+            "examples": [
+              {"id": "./spec/a_spec.rb[1:1]", "run_time": 1.0}
+            ]
+          }
+        JSON
+        File.write(empty_file, '')
+
+        timings = described_class.parse_files_with_examples([file1, empty_file, non_existent])
+
+        expect(timings.keys).to contain_exactly('spec/a_spec.rb[1:1]')
+      end
+    end
+  end
 end

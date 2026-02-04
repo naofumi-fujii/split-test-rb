@@ -13,7 +13,7 @@ module SplitTestRb
 
       examples = data['examples'] || []
       examples.each do |example|
-        file_path = example['file_path']
+        file_path = extract_file_path(example)
         run_time = example['run_time'].to_f
 
         next unless file_path
@@ -27,6 +27,18 @@ module SplitTestRb
       end
 
       timings
+    end
+
+    # Extracts file path from example, preferring id field over file_path
+    # This is important for shared examples where file_path points to the shared example file
+    # but id contains the actual spec file path (e.g., "./spec/features/entry_spec.rb[1:1:1]")
+    def self.extract_file_path(example)
+      if example['id']
+        # Extract file path from id (format: "./path/to/spec.rb[1:2:3]")
+        example['id'].split('[').first
+      else
+        example['file_path']
+      end
     end
 
     # Parses all JSON files in a directory and merges results

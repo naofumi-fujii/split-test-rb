@@ -108,6 +108,69 @@ RSpec.describe SplitTestRb::JsonParser do
         end
       end
     end
+
+    context 'with shared examples (file_path differs from id)' do
+      it 'extracts file path from id field instead of file_path' do
+        Tempfile.create(['shared_example', '.json']) do |file|
+          # This simulates RSpec JSON output when using shared examples
+          # file_path points to the shared example file, but id contains the actual spec file
+          file.write(<<~JSON)
+            {
+              "examples": [
+                {
+                  "id": "./spec/features/entry_spec.rb[1:1:1:1]",
+                  "file_path": "./spec/support/shared_example/entries.rb",
+                  "run_time": 5.0
+                },
+                {
+                  "id": "./spec/features/entry_spec.rb[1:1:1:2]",
+                  "file_path": "./spec/support/shared_example/entries.rb",
+                  "run_time": 3.0
+                },
+                {
+                  "id": "./spec/features/other_spec.rb[1:1]",
+                  "file_path": "./spec/features/other_spec.rb",
+                  "run_time": 2.0
+                }
+              ]
+            }
+          JSON
+          file.rewind
+
+          timings = described_class.parse(file.path)
+
+          # Should use the spec file path from id, not the shared example path from file_path
+          expect(timings.keys).to contain_exactly(
+            'spec/features/entry_spec.rb',
+            'spec/features/other_spec.rb'
+          )
+          # entry_spec.rb should have aggregated time from both shared examples
+          expect(timings['spec/features/entry_spec.rb']).to eq(8.0)
+          expect(timings['spec/features/other_spec.rb']).to eq(2.0)
+        end
+      end
+
+      it 'falls back to file_path when id is not present' do
+        Tempfile.create(['no_id', '.json']) do |file|
+          file.write(<<~JSON)
+            {
+              "examples": [
+                {
+                  "file_path": "./spec/models/user_spec.rb",
+                  "run_time": 1.5
+                }
+              ]
+            }
+          JSON
+          file.rewind
+
+          timings = described_class.parse(file.path)
+
+          expect(timings.keys).to contain_exactly('spec/models/user_spec.rb')
+          expect(timings['spec/models/user_spec.rb']).to eq(1.5)
+        end
+      end
+    end
   end
 
   describe '.parse_files' do

@@ -6,16 +6,16 @@
 RSpec.describe 'HeavyTests' do
   it 'example 1 - sleeps for 1 second' do
     sleep(1)
-    expect(true).to be true
+    expect(1).to eq 1
   end
 
   it 'example 2 - sleeps for 1 second' do
     sleep(1)
-    expect(true).to be true
+    expect(2).to eq 2
   end
 
   it 'example 3 - sleeps for 1 second' do
     sleep(1)
-    expect(true).to be true
+    expect(3).to eq 3
   end
 end

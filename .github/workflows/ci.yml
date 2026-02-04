@@ -106,6 +106,7 @@ jobs:
             --node-total 5 \
             --test-dir spec \
             --test-pattern '**/*_spec.rb' \
+            --split-by-example-threshold 2.5 \
             --debug)
 
     - name: Upload test results

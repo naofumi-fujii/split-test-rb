@@ -49,6 +49,8 @@ Options:
   --json-path PATH            Path to directory containing RSpec JSON reports (required)
   --test-dir DIR              Test directory (default: spec)
   --test-pattern PATTERN      Test file pattern (default: **/*_spec.rb)
+  --split-by-example-threshold SECONDS
+                              Split files with execution time >= threshold into individual examples
   --debug                     Show debug information
   -h, --help                  Show help message
 ```
@@ -80,6 +82,28 @@ The test directory and pattern options are useful for:
 - Custom test directory structures
 - Different naming conventions for test files
 - Monorepos with multiple test suites
+
+### Example-Level Splitting for Heavy Files
+
+When you have test files that take significantly longer than others, you can use `--split-by-example-threshold` to automatically split them into individual RSpec examples. This enables finer-grained load balancing across CI nodes.
+
+```bash
+split-test-rb --json-path tmp/test-results \
+  --node-index $CI_NODE_INDEX \
+  --node-total $CI_NODE_TOTAL \
+  --split-by-example-threshold 10.0
+```
+
+With this option:
+- Files with execution time **below** the threshold are distributed as whole files (e.g., `spec/fast_spec.rb`)
+- Files with execution time **at or above** the threshold are split into individual examples (e.g., `spec/slow_spec.rb[1:1]`, `spec/slow_spec.rb[1:2]`)
+
+This is useful when:
+- A single test file contains many slow examples that dominate a CI node's runtime
+- You want to maximize parallelization without manually splitting large test files
+- Some test files are bottlenecks that prevent even distribution
+
+**Note:** The JSON report must contain the `id` field for each example (RSpec's default JSON formatter includes this). The tool uses these IDs to generate the example-specific paths that RSpec can run.
 
 ## How It Works
 

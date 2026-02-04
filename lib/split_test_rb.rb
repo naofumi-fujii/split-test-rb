@@ -41,6 +41,47 @@ module SplitTestRb
       end
     end
 
+    # Parses RSpec JSON file and returns hash of {example_id => execution_time}
+    # Example ID format: "spec/file.rb[1:1]"
+    def self.parse_with_examples(json_path)
+      content = File.read(json_path)
+      data = JSON.parse(content)
+      timings = {}
+
+      examples = data['examples'] || []
+      examples.each do |example|
+        next unless example['id']
+
+        example_id = normalize_path(example['id'])
+        run_time = example['run_time'].to_f
+
+        timings[example_id] = run_time
+      end
+
+      timings
+    end
+
+    # Parses multiple JSON files and returns hash of {example_id => execution_time}
+    def self.parse_files_with_examples(json_paths)
+      timings = {}
+
+      json_paths.each do |json_path|
+        next unless File.exist?(json_path)
+        next if File.empty?(json_path)
+
+        begin
+          example_timings = parse_with_examples(json_path)
+          example_timings.each do |example_id, time|
+            timings[example_id] = time
+          end
+        rescue JSON::ParserError => e
+          warn "Warning: Failed to parse #{json_path}: #{e.message}"
+        end
+      end
+
+      timings
+    end
+
     # Parses all JSON files in a directory and merges results
     def self.parse_directory(dir_path)
       json_files = Dir.glob(File.join(dir_path, '**', '*.json'))
@@ -134,15 +175,43 @@ module SplitTestRb
 
     def self.load_timings_from_json(json_dir, options)
       json_files = Dir.glob(File.join(json_dir, '**', '*.json'))
-      timings = JsonParser.parse_files(json_files)
+      file_timings = JsonParser.parse_files(json_files)
       all_test_files = find_all_spec_files(options[:test_dir], options[:test_pattern])
 
       # Filter out files from JSON cache that don't match the test pattern
-      timings.select! { |file, _| all_test_files.key?(file) }
+      file_timings.select! { |file, _| all_test_files.key?(file) }
 
-      default_files = add_missing_files_with_default_timing(timings, all_test_files)
+      default_files = add_missing_files_with_default_timing(file_timings, all_test_files)
+
+      # Apply example-level splitting if threshold is set
+      threshold = options[:split_by_example_threshold]
+      timings = if threshold
+                  apply_example_splitting(file_timings, json_files, threshold)
+                else
+                  file_timings
+                end
 
       [timings, default_files, json_files]
+    end
+
+    # Splits heavy files (>= threshold) into individual examples
+    def self.apply_example_splitting(file_timings, json_files, threshold)
+      heavy_files = file_timings.select { |_file, time| time >= threshold }
+      return file_timings if heavy_files.empty?
+
+      example_timings = JsonParser.parse_files_with_examples(json_files)
+
+      # Start with light files (below threshold)
+      timings = file_timings.reject { |file, _| heavy_files.key?(file) }
+
+      # Add individual examples from heavy files
+      heavy_files.each_key do |heavy_file|
+        example_timings.each do |example_id, time|
+          timings[example_id] = time if example_id.start_with?(heavy_file)
+        end
+      end
+
+      timings
     end
 
     # Adds test files missing from JSON results with default timing (1.0s)
@@ -179,7 +248,8 @@ module SplitTestRb
       total_nodes: 1,
       debug: false,
       test_dir: 'spec',
-      test_pattern: '**/*_spec.rb'
+      test_pattern: '**/*_spec.rb',
+      split_by_example_threshold: nil
     }.freeze
 
     # Parses command-line arguments and returns options hash
@@ -214,6 +284,10 @@ module SplitTestRb
     def self.define_test_options(opts, options)
       opts.on('--test-dir DIR', 'Test directory (default: spec)') { |v| options[:test_dir] = v }
       opts.on('--test-pattern PATTERN', 'Test file pattern (default: **/*_spec.rb)') { |v| options[:test_pattern] = v }
+      opts.on('--split-by-example-threshold SECONDS', Float,
+              'Split files with execution time >= threshold into individual examples') do |v|
+        options[:split_by_example_threshold] = v
+      end
       opts.on('--debug', 'Show debug information') { options[:debug] = true }
       opts.on('-h', '--help', 'Show this help message') do
         puts opts

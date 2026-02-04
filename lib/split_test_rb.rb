@@ -185,11 +185,11 @@ module SplitTestRb
 
       # Apply example-level splitting if threshold is set
       threshold = options[:split_by_example_threshold]
-      if threshold
-        timings = apply_example_splitting(file_timings, json_files, threshold)
-      else
-        timings = file_timings
-      end
+      timings = if threshold
+                  apply_example_splitting(file_timings, json_files, threshold)
+                else
+                  file_timings
+                end
 
       [timings, default_files, json_files]
     end

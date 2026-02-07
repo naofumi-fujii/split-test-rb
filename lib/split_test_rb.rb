@@ -175,11 +175,23 @@ module SplitTestRb
 
     def self.load_timings_from_json(json_dir, options)
       json_files = Dir.glob(File.join(json_dir, '**', '*.json'))
+
+      if json_files.empty?
+        warn "Warning: No test result files found in: #{json_dir}, using all test files with equal execution time"
+        timings = find_all_spec_files(options[:test_dir], options[:test_pattern])
+        return [timings, Set.new(timings.keys), []]
+      end
+
       file_timings = JsonParser.parse_files(json_files)
       all_test_files = find_all_spec_files(options[:test_dir], options[:test_pattern])
 
       # Filter out files from JSON cache that don't match the test pattern
       file_timings.select! { |file, _| all_test_files.key?(file) }
+
+      if file_timings.empty? && !all_test_files.empty?
+        warn "Warning: JSON files found in #{json_dir} but contain no valid test results, " \
+             'using all test files with equal execution time'
+      end
 
       default_files = add_missing_files_with_default_timing(file_timings, all_test_files)
 

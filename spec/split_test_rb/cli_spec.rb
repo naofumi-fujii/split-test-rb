@@ -78,6 +78,45 @@ RSpec.describe SplitTestRb::CLI do
       end
     end
 
+    it 'warns when JSON directory has no JSON files' do
+      with_temp_test_dir do |tmpdir|
+        # Create spec files
+        FileUtils.mkdir_p('spec')
+        File.write('spec/test1_spec.rb', '# test 1')
+
+        # Create empty JSON directory (no JSON files)
+        json_dir = File.join(tmpdir, 'json_results')
+        FileUtils.mkdir_p(json_dir)
+
+        argv = ['--json-path', json_dir, '--node-index', '0', '--node-total', '1']
+
+        output = run_cli_capturing_both(argv)
+
+        expect(output[:stderr]).to match(/No test result files found in:/)
+        expect(output[:stdout]).to include('spec/test1_spec.rb')
+      end
+    end
+
+    it 'warns when JSON files exist but contain no valid test results' do
+      with_temp_test_dir do
+        # Create spec files
+        FileUtils.mkdir_p('spec')
+        File.write('spec/test1_spec.rb', '# test 1')
+
+        # Create JSON directory with a file that has empty examples
+        json_dir = 'json_results'
+        FileUtils.mkdir_p(json_dir)
+        File.write(File.join(json_dir, 'empty.json'), '{"examples": []}')
+
+        argv = ['--json-path', json_dir, '--node-index', '0', '--node-total', '1']
+
+        output = run_cli_capturing_both(argv)
+
+        expect(output[:stderr]).to match(/JSON files found in .* but contain no valid test results/)
+        expect(output[:stdout]).to include('spec/test1_spec.rb')
+      end
+    end
+
     it 'outputs debug information when --debug flag is set' do
       with_temp_test_dir do
         setup_test_files_with_json

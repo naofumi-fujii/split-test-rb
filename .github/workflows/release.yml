@@ -57,6 +57,15 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.3'
-          bundler-cache: true
 
-      - uses: rubygems/release-gem@v1
+      - name: Configure trusted publishing credentials
+        uses: rubygems/configure-rubygems-credentials@v1.0.0
+
+      - name: Build gem
+        run: gem build split-test-rb.gemspec
+
+      - name: Push gem
+        run: gem push split-test-rb-*.gem
+
+      - name: Wait for release to propagate
+        run: gem exec rubygems-await split-test-rb-*.gem

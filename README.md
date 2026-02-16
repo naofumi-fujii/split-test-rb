@@ -10,12 +10,10 @@ split-test-rb reads RSpec JSON test reports containing execution times and distr
 
 ## Installation
 
-Since this gem is not yet published to RubyGems, you need to install it from GitHub.
-
 Add to your Gemfile:
 
 ```ruby
-gem 'split-test-rb', github: 'naofumi-fujii/split-test-rb'
+gem 'split-test-rb'
 ```
 
 Then run:
@@ -30,7 +28,7 @@ First, add split-test-rb to your Gemfile:
 
 ```ruby
 # Gemfile
-gem 'split-test-rb', github: 'naofumi-fujii/split-test-rb'
+gem 'split-test-rb'
 ```
 
 For a working example, see this project's own CI configuration:
@@ -159,6 +157,14 @@ To generate JSON reports with RSpec, use the built-in JSON formatter:
 ```bash
 bundle exec rspec --format json --out tmp/rspec-results/results.json
 ```
+
+## Release
+
+To release a new version:
+
+1. Update the version number in `lib/split_test_rb/version.rb`
+2. Commit the change and push to `main`
+3. The [Release workflow](.github/workflows/release.yml) automatically creates a git tag (`v*`) and publishes the gem to RubyGems via trusted publishing
 
 ## License
 

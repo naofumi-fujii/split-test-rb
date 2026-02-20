@@ -141,12 +141,16 @@ module SplitTestRb
 
   # Command-line interface
   class CLI
+    MAX_DISPLAY_FILES_WITHOUT_HISTORY = 100
+
     def self.run(argv)
       options = parse_options(argv)
       validate_options!(options)
 
       timings, default_files, json_files = load_timings(options)
       exit_if_no_tests(timings)
+
+      print_tests_without_history(default_files) unless default_files.empty?
 
       nodes = Balancer.balance(timings, options[:total_nodes])
       DebugPrinter.print(nodes, timings, default_files, json_files) if options[:debug]
@@ -228,6 +232,17 @@ module SplitTestRb
       end
 
       default_files
+    end
+
+    # Prints a list of test files that have no historical timing data
+    def self.print_tests_without_history(default_files)
+      sorted_files = default_files.sort
+      warn '## Tests without historical data'
+      sorted_files.first(MAX_DISPLAY_FILES_WITHOUT_HISTORY).each do |file|
+        warn "  - #{file}"
+      end
+      warn '  ...' if sorted_files.size > MAX_DISPLAY_FILES_WITHOUT_HISTORY
+      warn ''
     end
 
     def self.exit_if_no_tests(timings)

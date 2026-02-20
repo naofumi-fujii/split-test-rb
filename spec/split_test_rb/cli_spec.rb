@@ -128,6 +128,78 @@ RSpec.describe SplitTestRb::CLI do
       end
     end
 
+    it 'lists tests without historical data when some files are missing from JSON' do
+      with_temp_test_dir do
+        # Create spec directory and files (3 files, only 1 in JSON)
+        FileUtils.mkdir_p('spec')
+        File.write('spec/test1_spec.rb', '# test 1')
+        File.write('spec/test2_spec.rb', '# test 2')
+        File.write('spec/test3_spec.rb', '# test 3')
+
+        json_dir = 'json_results'
+        FileUtils.mkdir_p(json_dir)
+        create_json_file(File.join(json_dir, 'test.json'), [
+                           { file_path: './spec/test1_spec.rb', run_time: 1.0 }
+                         ])
+
+        argv = ['--json-path', json_dir, '--node-index', '0', '--node-total', '1']
+
+        output = run_cli_capturing_both(argv)
+
+        expect(output[:stderr]).to match(/Tests without historical data/)
+        expect(output[:stderr]).to match(%r{spec/test2_spec\.rb})
+        expect(output[:stderr]).to match(%r{spec/test3_spec\.rb})
+        # File with historical data should NOT be listed
+        expect(output[:stderr]).not_to match(/^\s+-\sspec\/test1_spec\.rb$/)
+      end
+    end
+
+    it 'does not list tests without historical data when all files have history' do
+      with_temp_test_dir do
+        FileUtils.mkdir_p('spec')
+        File.write('spec/test1_spec.rb', '# test 1')
+        File.write('spec/test2_spec.rb', '# test 2')
+
+        json_dir = 'json_results'
+        FileUtils.mkdir_p(json_dir)
+        create_json_file(File.join(json_dir, 'test.json'), [
+                           { file_path: './spec/test1_spec.rb', run_time: 1.0 },
+                           { file_path: './spec/test2_spec.rb', run_time: 2.0 }
+                         ])
+
+        argv = ['--json-path', json_dir, '--node-index', '0', '--node-total', '1']
+
+        output = run_cli_capturing_both(argv)
+
+        expect(output[:stderr]).not_to match(/Tests without historical data/)
+      end
+    end
+
+    it 'truncates tests without history list at 100 files with ellipsis' do
+      with_temp_test_dir do
+        FileUtils.mkdir_p('spec')
+        # Create 105 spec files, none in JSON
+        105.times do |i|
+          File.write("spec/test_#{format('%03d', i)}_spec.rb", "# test #{i}")
+        end
+
+        json_dir = 'json_results'
+        FileUtils.mkdir_p(json_dir)
+        File.write(File.join(json_dir, 'empty.json'), '{"examples": []}')
+
+        argv = ['--json-path', json_dir, '--node-index', '0', '--node-total', '1']
+
+        output = run_cli_capturing_both(argv)
+
+        expect(output[:stderr]).to match(/Tests without historical data/)
+        # Should show exactly 100 files
+        file_lines = output[:stderr].lines.select { |l| l.match?(/^\s+-\sspec\//) }
+        expect(file_lines.size).to eq(100)
+        # Should show ellipsis
+        expect(output[:stderr]).to match(/^\s+\.\.\./)
+      end
+    end
+
     it 'uses custom test directory when --test-dir is specified' do
       with_temp_test_dir do
         # Create test directory and files

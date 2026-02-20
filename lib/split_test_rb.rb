@@ -221,7 +221,7 @@ module SplitTestRb
 
       return default_files if missing_files.empty?
 
-      warn "Warning: Found #{missing_files.size} test files not in JSON, adding with default execution time"
+      warn "Warning: #{missing_files.size} test files not found in JSON, adding with default execution time"
       missing_files.each do |file|
         timings[file] = 1.0
         default_files.add(file)

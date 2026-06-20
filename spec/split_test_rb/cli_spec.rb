@@ -28,7 +28,7 @@ RSpec.describe SplitTestRb::CLI do
       output = run_cli_capturing_both(argv)
 
       # Should output spec files from the current project
-      expect(output[:stdout]).to match(%r{spec/})
+      expect(output[:stdout]).to include('spec/')
     end
 
     it 'outputs different files for different nodes' do
@@ -86,9 +86,9 @@ RSpec.describe SplitTestRb::CLI do
 
         output = run_cli_capturing_both(argv)
 
-        expect(output[:stderr]).to match(/Test Balancing/)
-        expect(output[:stderr]).to match(/Node 0:/)
-        expect(output[:stderr]).to match(/Node 1:/)
+        expect(output[:stderr]).to include('Test Balancing')
+        expect(output[:stderr]).to include('Node 0:')
+        expect(output[:stderr]).to include('Node 1:')
       end
     end
 
@@ -100,7 +100,7 @@ RSpec.describe SplitTestRb::CLI do
 
         output = run_cli_capturing_both(argv)
 
-        expect(output[:stderr]).not_to match(/Test Balancing/)
+        expect(output[:stderr]).not_to include('Test Balancing')
       end
     end
 
@@ -124,7 +124,7 @@ RSpec.describe SplitTestRb::CLI do
         output = run_cli_capturing_both(argv)
 
         # Should not warn about missing files
-        expect(output[:stderr]).not_to match(/spec files not in JSON/)
+        expect(output[:stderr]).not_to include('spec files not in JSON')
       end
     end
 
@@ -398,10 +398,10 @@ RSpec.describe SplitTestRb::CLI do
         SplitTestRb::DebugPrinter.print(nodes, timings, default_files, json_files)
       end
 
-      expect(output).to match(/Test Balancing Debug Info/)
-      expect(output).to match(/Timing Data Source \(from past test execution results\)/)
-      expect(output).to match(/Load Balance/)
-      expect(output).to match(/Per-Node Distribution/)
+      expect(output).to include('Test Balancing Debug Info')
+      expect(output).to include('Timing Data Source (from past test execution results)')
+      expect(output).to include('Load Balance')
+      expect(output).to include('Per-Node Distribution')
     end
 
     it 'outputs timing data source statistics' do
@@ -409,10 +409,10 @@ RSpec.describe SplitTestRb::CLI do
         SplitTestRb::DebugPrinter.print(nodes, timings, default_files, json_files)
       end
 
-      expect(output).to match(/Files with historical timing: 3 files/)
-      expect(output).to match(/Files with default timing \(1\.0s\): 0 files/)
-      expect(output).to match(/Total files: 3 files/)
-      expect(output).to match(/Total estimated time: 8\.7s/)
+      expect(output).to include('Files with historical timing: 3 files')
+      expect(output).to include('Files with default timing (1.0s): 0 files')
+      expect(output).to include('Total files: 3 files')
+      expect(output).to include('Total estimated time: 8.7s')
     end
 
     it 'outputs load balance statistics' do
@@ -420,8 +420,8 @@ RSpec.describe SplitTestRb::CLI do
         SplitTestRb::DebugPrinter.print(nodes, timings, default_files, json_files)
       end
 
-      expect(output).to match(/Average time per node: 4\.35s/)
-      expect(output).to match(/Max deviation from average: 26\.4%/)
+      expect(output).to include('Average time per node: 4.35s')
+      expect(output).to include('Max deviation from average: 26.4%')
     end
 
     it 'outputs per-node distribution with deviations' do
@@ -429,11 +429,11 @@ RSpec.describe SplitTestRb::CLI do
         SplitTestRb::DebugPrinter.print(nodes, timings, default_files, json_files)
       end
 
-      expect(output).to match(/Node 0: 2 files, 5\.5s \(\+26\.4% from avg\)/)
-      expect(output).to match(/Node 1: 1 files, 3\.2s \(-26\.4% from avg\)/)
-      expect(output).to match(%r{spec/a_spec\.rb \(3\.0s\)})
-      expect(output).to match(%r{spec/b_spec\.rb \(2\.5s\)})
-      expect(output).to match(%r{spec/c_spec\.rb \(3\.2s\)})
+      expect(output).to include('Node 0: 2 files, 5.5s (+26.4% from avg)')
+      expect(output).to include('Node 1: 1 files, 3.2s (-26.4% from avg)')
+      expect(output).to include('spec/a_spec.rb (3.0s)')
+      expect(output).to include('spec/b_spec.rb (2.5s)')
+      expect(output).to include('spec/c_spec.rb (3.2s)')
     end
 
     it 'marks default files in debug output' do
@@ -450,13 +450,13 @@ RSpec.describe SplitTestRb::CLI do
         SplitTestRb::DebugPrinter.print(nodes, timings, default_files, [])
       end
 
-      expect(output).to match(/Test Balancing Debug Info/)
-      expect(output).to match(/Files with historical timing: 1 files/)
-      expect(output).to match(/Files with default timing \(1\.0s\): 1 files/)
-      expect(output).to match(/Total files: 2 files/)
-      expect(output).to match(/Total estimated time: 2\.0s/)
-      expect(output).to match(%r{spec/a_spec\.rb \(1\.0s\)})
-      expect(output).to match(%r{spec/b_spec\.rb \(1\.0s, default - no historical data\)})
+      expect(output).to include('Test Balancing Debug Info')
+      expect(output).to include('Files with historical timing: 1 files')
+      expect(output).to include('Files with default timing (1.0s): 1 files')
+      expect(output).to include('Total files: 2 files')
+      expect(output).to include('Total estimated time: 2.0s')
+      expect(output).to include('spec/a_spec.rb (1.0s)')
+      expect(output).to include('spec/b_spec.rb (1.0s, default - no historical data)')
     end
 
     it 'outputs loaded JSON files information' do
@@ -465,10 +465,10 @@ RSpec.describe SplitTestRb::CLI do
         SplitTestRb::DebugPrinter.print(nodes, timings, default_files, json_files)
       end
 
-      expect(output).to match(/Loaded Test Result Files/)
-      expect(output).to match(%r{tmp/results/node0\.json})
-      expect(output).to match(%r{tmp/results/node1\.json})
-      expect(output).to match(/Total: 2 JSON files, 3 test files extracted/)
+      expect(output).to include('Loaded Test Result Files')
+      expect(output).to include('tmp/results/node0.json')
+      expect(output).to include('tmp/results/node1.json')
+      expect(output).to include('Total: 2 JSON files, 3 test files extracted')
     end
   end
 

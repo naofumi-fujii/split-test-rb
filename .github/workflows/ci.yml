@@ -85,7 +85,7 @@ jobs:
     # Uses prefix matching to find the latest cache from the same branch or main branch
     # Cache key version: increment when changing cache format
     - name: Restore previous test results from cache
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@v6
       with:
         path: tmp/rspec-results/
         key: rspec-results-v1-${{ github.ref }}-${{ github.sha }}-${{ github.run_attempt }}
@@ -137,7 +137,7 @@ jobs:
         path: tmp/rspec-results/
 
     - name: Save test results to cache for next run
-      uses: actions/cache/save@v5
+      uses: actions/cache/save@v6
       with:
         path: tmp/rspec-results/
         key: rspec-results-v1-${{ github.ref }}-${{ github.sha }}-${{ github.run_attempt }}

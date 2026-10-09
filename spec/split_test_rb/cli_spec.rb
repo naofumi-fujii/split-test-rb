@@ -262,6 +262,12 @@ RSpec.describe SplitTestRb::CLI do
       expect(options[:test_dir]).to eq('spec')
       expect(options[:test_pattern]).to eq('**/*_spec.rb')
       expect(options[:split_by_example_threshold]).to be_nil
+      expect(options[:dry_run_json]).to be_nil
+    end
+
+    it 'parses dry-run-json option' do
+      options = described_class.parse_options(['--dry-run-json', 'tmp/dry_run.json'])
+      expect(options[:dry_run_json]).to eq('tmp/dry_run.json')
     end
 
     it 'parses split-by-example-threshold option' do
@@ -336,6 +342,76 @@ RSpec.describe SplitTestRb::CLI do
     end
   end
 
+  describe '.apply_example_splitting with current_example_ids' do
+    def write_cache_json
+      FileUtils.mkdir_p('json_results')
+      File.write('json_results/test.json', <<~JSON)
+        {
+          "examples": [
+            {"id": "./spec/heavy_spec.rb[1:1]", "run_time": 3.0},
+            {"id": "./spec/heavy_spec.rb[1:2]", "run_time": 2.0},
+            {"id": "./spec/light_spec.rb[1:1]", "run_time": 1.0}
+          ]
+        }
+      JSON
+      ['json_results/test.json']
+    end
+
+    let(:file_timings) { { 'spec/heavy_spec.rb' => 5.0, 'spec/light_spec.rb' => 1.0 } }
+
+    it 'adds examples missing from the cache with default timing' do
+      with_temp_test_dir do
+        default_files = Set.new
+        result = described_class.apply_example_splitting(
+          file_timings, write_cache_json, 4.0,
+          current_example_ids: ['spec/heavy_spec.rb[1:1]', 'spec/heavy_spec.rb[1:2]', 'spec/heavy_spec.rb[1:3]'],
+          default_files: default_files
+        )
+
+        expect(result).to eq(
+          'spec/light_spec.rb' => 1.0,
+          'spec/heavy_spec.rb[1:1]' => 3.0,
+          'spec/heavy_spec.rb[1:2]' => 2.0,
+          'spec/heavy_spec.rb[1:3]' => 1.0
+        )
+        expect(default_files).to eq(Set['spec/heavy_spec.rb[1:3]'])
+      end
+    end
+
+    it 'drops cached examples that no longer exist' do
+      with_temp_test_dir do
+        result = described_class.apply_example_splitting(
+          file_timings, write_cache_json, 4.0,
+          current_example_ids: ['spec/heavy_spec.rb[1:1]']
+        )
+
+        expect(result).to eq('spec/light_spec.rb' => 1.0, 'spec/heavy_spec.rb[1:1]' => 3.0)
+      end
+    end
+
+    it 'assigns the whole heavy file when the dry-run JSON has no examples for it' do
+      with_temp_test_dir do
+        result = described_class.apply_example_splitting(
+          file_timings, write_cache_json, 4.0,
+          current_example_ids: ['spec/light_spec.rb[1:1]']
+        )
+
+        expect(result).to eq('spec/light_spec.rb' => 1.0, 'spec/heavy_spec.rb' => 5.0)
+      end
+    end
+
+    it 'does not treat examples of a file whose name starts with the heavy file path as its examples' do
+      with_temp_test_dir do
+        result = described_class.apply_example_splitting(
+          file_timings, write_cache_json, 4.0,
+          current_example_ids: ['spec/heavy_spec.rb[1:1]', 'spec/heavy_spec.rb_other[1:1]']
+        )
+
+        expect(result).to eq('spec/light_spec.rb' => 1.0, 'spec/heavy_spec.rb[1:1]' => 3.0)
+      end
+    end
+  end
+
   describe '--split-by-example-threshold integration' do
     it 'outputs individual examples for heavy files' do
       with_temp_test_dir do
@@ -372,6 +448,57 @@ RSpec.describe SplitTestRb::CLI do
         # Heavy file should NOT appear as a whole file
         lines = output[:stdout].strip.split("\n")
         expect(lines).not_to include('spec/heavy_spec.rb')
+      end
+    end
+  end
+
+  describe '--dry-run-json integration' do
+    it 'outputs examples of heavy files that are missing from the cached JSON' do
+      with_temp_test_dir do
+        FileUtils.mkdir_p('spec')
+        File.write('spec/heavy_spec.rb', '# heavy spec')
+        File.write('spec/light_spec.rb', '# light spec')
+
+        FileUtils.mkdir_p('json_results')
+        File.write('json_results/test.json', <<~JSON)
+          {
+            "examples": [
+              {"id": "./spec/heavy_spec.rb[1:1]", "run_time": 3.0},
+              {"id": "./spec/heavy_spec.rb[1:2]", "run_time": 2.5},
+              {"id": "./spec/light_spec.rb[1:1]", "run_time": 1.0}
+            ]
+          }
+        JSON
+        File.write('dry_run.json', <<~JSON)
+          {
+            "examples": [
+              {"id": "./spec/heavy_spec.rb[1:1]", "run_time": 0.0},
+              {"id": "./spec/heavy_spec.rb[1:2]", "run_time": 0.0},
+              {"id": "./spec/heavy_spec.rb[1:3]", "run_time": 0.0},
+              {"id": "./spec/light_spec.rb[1:1]", "run_time": 0.0}
+            ]
+          }
+        JSON
+
+        argv = ['--json-path', 'json_results', '--node-index', '0', '--node-total', '1',
+                '--split-by-example-threshold', '4.0', '--dry-run-json', 'dry_run.json']
+
+        output = run_cli_capturing_both(argv)
+
+        expect(output[:stdout].strip.split("\n")).to contain_exactly(
+          'spec/heavy_spec.rb[1:1]', 'spec/heavy_spec.rb[1:2]', 'spec/heavy_spec.rb[1:3]', 'spec/light_spec.rb'
+        )
+      end
+    end
+
+    it 'exits with error when the dry-run JSON does not exist' do
+      with_temp_test_dir do
+        FileUtils.mkdir_p('json_results')
+        argv = ['--json-path', 'json_results', '--split-by-example-threshold', '4.0', '--dry-run-json', 'missing.json']
+
+        expect do
+          expect { described_class.run(argv) }.to raise_error(SystemExit)
+        end.to output(/Error: dry-run JSON not found: missing.json/).to_stderr
       end
     end
   end

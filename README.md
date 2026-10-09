@@ -50,6 +50,8 @@ Options:
   --split-by-example-threshold SECONDS
                               Split files with execution time >= threshold into individual examples
   --dry-run-json PATH         RSpec JSON from `rspec --dry-run --format json`, used to list current examples of heavy files
+  --[no-]dry-run              Run `rspec --dry-run` to list current examples of heavy files (default: true)
+  --rspec-command CMD         Command used for the dry-run (default: bundle exec rspec)
   --debug                     Show debug information
   -h, --help                  Show help message
 ```
@@ -104,28 +106,38 @@ This is useful when:
 
 **Note:** The JSON report must contain the `id` field for each example (RSpec's default JSON formatter includes this). The tool uses these IDs to generate the example-specific paths that RSpec can run.
 
-#### Keeping heavy files up to date with `--dry-run-json`
+#### Keeping heavy files up to date
 
-By default, heavy files are assigned only by the example IDs found in the cached JSON reports. Examples that are not in the cache are not assigned to any node:
+RSpec example IDs are position based (e.g. `[1:2:1]`), so the cached JSON reports can be out of date:
 
-- Examples newly added to a heavy file
-- Examples whose IDs shifted because other examples were inserted or moved (RSpec example IDs are position based, e.g. `[1:2:1]`)
+- Examples newly added to a heavy file are not in the cache
+- Examples whose IDs shifted because other examples were inserted or moved do not match the cache
 
-Pass the output of `rspec --dry-run --format json` to use the examples that currently exist:
+To assign the examples that currently exist, split-test-rb runs `bundle exec rspec --dry-run --order defined --format json` for the heavy files. No extra setup is needed. For each heavy file:
 
-```bash
-bundle exec rspec --dry-run --format json --out tmp/dry-run.json
-split-test-rb --json-path tmp/test-results \
-  --node-index $CI_NODE_INDEX \
-  --node-total $CI_NODE_TOTAL \
-  --split-by-example-threshold 10.0 \
-  --dry-run-json tmp/dry-run.json
-```
-
-With this option, for each heavy file:
-- Examples in the dry-run JSON are assigned, using cached timings when available and the default timing (1.0s) otherwise
+- Examples found by the dry-run are assigned, using cached timings when available and the default timing (1.0s) otherwise
 - Cached example IDs that no longer exist are ignored
-- If the dry-run JSON has no examples for the file, the whole file is assigned
+- If the dry-run finds no examples for the file, the whole file is assigned
+
+If the dry-run fails (e.g. RSpec cannot boot), a warning is printed and each heavy file is assigned as a whole file. The split is less balanced, but no examples are dropped.
+
+The dry-run only runs when at least one file is at or above the threshold. It loads only the heavy files, and `--dry-run` skips `before(:suite)` hooks and the examples themselves.
+
+Options:
+
+- `--rspec-command CMD` changes how RSpec is started (default: `bundle exec rspec`), e.g. `--rspec-command bin/rspec`
+- `--dry-run-json PATH` uses an existing dry-run JSON instead of running the dry-run. Use `--order defined` so that every node gets the same list:
+
+  ```bash
+  bundle exec rspec --dry-run --order defined --format json --out tmp/dry-run.json
+  split-test-rb --json-path tmp/test-results \
+    --node-index $CI_NODE_INDEX \
+    --node-total $CI_NODE_TOTAL \
+    --split-by-example-threshold 10.0 \
+    --dry-run-json tmp/dry-run.json
+  ```
+
+- `--no-dry-run` assigns heavy files only by the example IDs in the cached JSON (the previous default behavior). Examples missing from the cache are not run
 
 ## How It Works
 

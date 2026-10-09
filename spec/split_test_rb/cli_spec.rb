@@ -263,6 +263,18 @@ RSpec.describe SplitTestRb::CLI do
       expect(options[:test_pattern]).to eq('**/*_spec.rb')
       expect(options[:split_by_example_threshold]).to be_nil
       expect(options[:dry_run_json]).to be_nil
+      expect(options[:dry_run]).to be(true)
+      expect(options[:rspec_command]).to eq('bundle exec rspec')
+    end
+
+    it 'parses no-dry-run option' do
+      options = described_class.parse_options(['--no-dry-run'])
+      expect(options[:dry_run]).to be(false)
+    end
+
+    it 'parses rspec-command option' do
+      options = described_class.parse_options(['--rspec-command', 'bin/rspec'])
+      expect(options[:rspec_command]).to eq('bin/rspec')
     end
 
     it 'parses dry-run-json option' do
@@ -434,7 +446,7 @@ RSpec.describe SplitTestRb::CLI do
         JSON
 
         argv = ['--json-path', json_dir, '--node-index', '0', '--node-total', '1',
-                '--split-by-example-threshold', '4.0']
+                '--split-by-example-threshold', '4.0', '--no-dry-run']
 
         output = run_cli_capturing_both(argv)
 
@@ -448,6 +460,105 @@ RSpec.describe SplitTestRb::CLI do
         # Heavy file should NOT appear as a whole file
         lines = output[:stdout].strip.split("\n")
         expect(lines).not_to include('spec/heavy_spec.rb')
+      end
+    end
+  end
+
+  describe 'internal dry-run integration' do
+    def write_spec_files_and_cache
+      FileUtils.mkdir_p('spec')
+      File.write('spec/heavy_spec.rb', '# heavy spec')
+      File.write('spec/light_spec.rb', '# light spec')
+      FileUtils.mkdir_p('json_results')
+      File.write('json_results/test.json', <<~JSON)
+        {
+          "examples": [
+            {"id": "./spec/heavy_spec.rb[1:1]", "run_time": 3.0},
+            {"id": "./spec/heavy_spec.rb[1:2]", "run_time": 2.5},
+            {"id": "./spec/light_spec.rb[1:1]", "run_time": 1.0}
+          ]
+        }
+      JSON
+    end
+
+    let(:base_argv) do
+      ['--json-path', 'json_results', '--node-index', '0', '--node-total', '1', '--split-by-example-threshold', '4.0']
+    end
+    let(:dry_runner) { instance_double(SplitTestRb::DryRunner) }
+
+    before { allow(SplitTestRb::DryRunner).to receive(:new).and_return(dry_runner) }
+
+    it 'runs the dry-run for heavy files and outputs examples missing from the cached JSON' do
+      with_temp_test_dir do
+        write_spec_files_and_cache
+        allow(dry_runner).to receive(:example_ids).and_return(
+          ['spec/heavy_spec.rb[1:1]', 'spec/heavy_spec.rb[1:2]', 'spec/heavy_spec.rb[1:3]']
+        )
+
+        output = run_cli_capturing_both(base_argv)
+
+        expect(output[:stdout].strip.split("\n")).to contain_exactly(
+          'spec/heavy_spec.rb[1:1]', 'spec/heavy_spec.rb[1:2]', 'spec/heavy_spec.rb[1:3]', 'spec/light_spec.rb'
+        )
+        expect(SplitTestRb::DryRunner).to have_received(:new).with('bundle exec rspec')
+        expect(dry_runner).to have_received(:example_ids).with(['spec/heavy_spec.rb'])
+      end
+    end
+
+    it 'assigns heavy files as whole files when the dry-run fails' do
+      with_temp_test_dir do
+        write_spec_files_and_cache
+        allow(dry_runner).to receive(:example_ids).and_return(nil)
+
+        output = run_cli_capturing_both(base_argv)
+
+        expect(output[:stdout].strip.split("\n")).to contain_exactly('spec/heavy_spec.rb', 'spec/light_spec.rb')
+      end
+    end
+
+    it 'uses the command given by --rspec-command' do
+      with_temp_test_dir do
+        write_spec_files_and_cache
+        allow(dry_runner).to receive(:example_ids).and_return(['spec/heavy_spec.rb[1:1]'])
+
+        run_cli_capturing_both(base_argv + ['--rspec-command', 'bin/rspec'])
+
+        expect(SplitTestRb::DryRunner).to have_received(:new).with('bin/rspec')
+      end
+    end
+
+    it 'does not run the dry-run when --dry-run-json is given' do
+      with_temp_test_dir do
+        write_spec_files_and_cache
+        File.write('dry_run.json', '{"examples": [{"id": "./spec/heavy_spec.rb[1:1]"}]}')
+
+        output = run_cli_capturing_both(base_argv + ['--dry-run-json', 'dry_run.json'])
+
+        expect(output[:stdout].strip.split("\n")).to contain_exactly('spec/heavy_spec.rb[1:1]', 'spec/light_spec.rb')
+        expect(SplitTestRb::DryRunner).not_to have_received(:new)
+      end
+    end
+
+    it 'does not run the dry-run when --no-dry-run is given' do
+      with_temp_test_dir do
+        write_spec_files_and_cache
+
+        output = run_cli_capturing_both(base_argv + ['--no-dry-run'])
+
+        expect(output[:stdout].strip.split("\n")).to contain_exactly(
+          'spec/heavy_spec.rb[1:1]', 'spec/heavy_spec.rb[1:2]', 'spec/light_spec.rb'
+        )
+        expect(SplitTestRb::DryRunner).not_to have_received(:new)
+      end
+    end
+
+    it 'does not run the dry-run when there are no heavy files' do
+      with_temp_test_dir do
+        write_spec_files_and_cache
+
+        run_cli_capturing_both(['--json-path', 'json_results', '--split-by-example-threshold', '100.0'])
+
+        expect(SplitTestRb::DryRunner).not_to have_received(:new)
       end
     end
   end

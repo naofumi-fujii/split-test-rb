@@ -1,5 +1,8 @@
 require 'json'
+require 'open3'
 require 'optparse'
+require 'shellwords'
+require 'tmpdir'
 require_relative 'split_test_rb/version'
 
 module SplitTestRb
@@ -193,6 +196,39 @@ module SplitTestRb
     end
   end
 
+  # Runs `rspec --dry-run` in a subprocess to list the examples that currently exist in the given files
+  # Uses --order defined so that every node gets the same list regardless of config.order (random order would
+  # make nodes compute different splits)
+  class DryRunner
+    DEFAULT_COMMAND = 'bundle exec rspec'.freeze
+
+    def initialize(command = DEFAULT_COMMAND)
+      @command = command
+    end
+
+    # Returns the example IDs of the given files, or nil when the dry-run fails
+    def example_ids(files)
+      Dir.mktmpdir('split-test-rb') do |dir|
+        out = File.join(dir, 'dry_run.json')
+        # stdout is captured so that it does not mix with the file list printed by the CLI
+        _stdout, stderr, status = Open3.capture3(*Shellwords.split(@command), '--dry-run', '--order', 'defined',
+                                                 '--format', 'json', '--out', out, *files)
+        return failed("exited with status #{status.exitstatus}\n#{stderr.lines.last(20).join}") unless status.success?
+
+        JsonParser.parse_with_examples(out).keys
+      end
+    rescue SystemCallError, JSON::ParserError => e
+      failed(e.message)
+    end
+
+    private
+
+    def failed(message)
+      warn "Warning: rspec dry-run failed, assigning heavy files as whole files: #{message}"
+      nil
+    end
+  end
+
   # Command-line interface
   class CLI
     def self.run(argv)
@@ -240,7 +276,7 @@ module SplitTestRb
       # Apply example-level splitting if threshold is set
       threshold = options[:split_by_example_threshold]
       timings = if threshold
-                  current_example_ids = load_current_example_ids(options[:dry_run_json])
+                  current_example_ids = current_example_ids_for(file_timings, threshold, options)
                   apply_example_splitting(file_timings, json_files, threshold,
                                           current_example_ids: current_example_ids, default_files: default_files)
                 else
@@ -254,6 +290,19 @@ module SplitTestRb
     def self.apply_example_splitting(file_timings, json_files, threshold, current_example_ids: nil, default_files: nil)
       ExampleSplitter.new(json_files, current_example_ids: current_example_ids, default_files: default_files)
                      .split(file_timings, threshold)
+    end
+
+    # Returns the example IDs that currently exist in heavy files, or nil to use the cached example IDs only
+    # Uses --dry-run-json when given, otherwise runs the dry-run for the heavy files unless --no-dry-run is given
+    def self.current_example_ids_for(file_timings, threshold, options)
+      return load_current_example_ids(options[:dry_run_json]) if options[:dry_run_json]
+      return nil unless options[:dry_run]
+
+      heavy_files = file_timings.select { |_file, time| time >= threshold }.keys
+      return nil if heavy_files.empty?
+
+      # An empty list makes ExampleSplitter assign each heavy file as a whole, so no examples are dropped
+      DryRunner.new(options[:rspec_command]).example_ids(heavy_files) || []
     end
 
     # Loads example IDs from an RSpec dry-run JSON report, or returns nil when no path is given
@@ -304,7 +353,9 @@ module SplitTestRb
       test_dir: 'spec',
       test_pattern: '**/*_spec.rb',
       split_by_example_threshold: nil,
-      dry_run_json: nil
+      dry_run_json: nil,
+      dry_run: true,
+      rspec_command: DryRunner::DEFAULT_COMMAND
     }.freeze
 
     # Parses command-line arguments and returns options hash
@@ -360,6 +411,13 @@ module SplitTestRb
       opts.on('--dry-run-json PATH',
               'RSpec JSON from `rspec --dry-run --format json`, used to list current examples of heavy files') do |v|
         options[:dry_run_json] = v
+      end
+      opts.on('--[no-]dry-run',
+              'Run `rspec --dry-run` to list current examples of heavy files (default: true)') do |v|
+        options[:dry_run] = v
+      end
+      opts.on('--rspec-command CMD', 'Command used for the dry-run (default: bundle exec rspec)') do |v|
+        options[:rspec_command] = v
       end
     end
 

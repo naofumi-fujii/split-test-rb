@@ -1,62 +1,37 @@
 name: Release
 
 on:
-  push:
-    branches: [main]
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
 
 permissions:
   contents: write
   id-token: write
 
 jobs:
-  create-tag:
+  release:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    outputs:
-      tag: ${{ steps.check.outputs.tag }}
+
     steps:
       - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
-      - name: Check if version tag exists
-        id: check
-        run: |
-          VERSION=$(ruby -r ./lib/split_test_rb/version -e 'puts SplitTestRb::VERSION')
-          TAG="v${VERSION}"
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists, skipping"
-            echo "tag=" >> "$GITHUB_OUTPUT"
-          else
-            echo "Creating tag $TAG"
-            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Create and push tag
-        if: steps.check.outputs.tag != ''
-        run: |
-          git tag ${{ steps.check.outputs.tag }}
-          git push origin ${{ steps.check.outputs.tag }}
-
-  push:
-    runs-on: ubuntu-latest
-    needs: [create-tag]
-    if: |
-      always() && (
-        (github.ref_type == 'tag' && startsWith(github.ref_name, 'v')) ||
-        (needs.create-tag.result == 'success' && needs.create-tag.outputs.tag != '')
-      )
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.create-tag.outputs.tag || github.ref }}
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.3'
+
+      - name: Update version and create tag
+        id: version
+        run: ./scripts/release.sh ${{ inputs.bump }}
 
       - name: Configure trusted publishing credentials
         uses: rubygems/configure-rubygems-credentials@v2.1.0
@@ -65,7 +40,14 @@ jobs:
         run: gem build split-test-rb.gemspec
 
       - name: Push gem
-        run: gem push split-test-rb-*.gem
+        run: gem push split-test-rb-${{ steps.version.outputs.version }}.gem
 
       - name: Wait for release to propagate
-        run: gem exec rubygems-await split-test-rb-*.gem
+        run: gem exec rubygems-await split-test-rb-${{ steps.version.outputs.version }}.gem
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          files: split-test-rb-${{ steps.version.outputs.version }}.gem
+          generate_release_notes: true

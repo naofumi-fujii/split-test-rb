@@ -160,11 +160,14 @@ bundle exec rspec --format json --out tmp/rspec-results/results.json
 
 ## Release
 
-To release a new version:
+To release a new version, use the [Release workflow](.github/workflows/release.yml):
 
-1. Update the version number in `lib/split_test_rb/version.rb`
-2. Commit the change and push to `main`
-3. The [Release workflow](.github/workflows/release.yml) automatically creates a git tag (`v*`) and publishes the gem to RubyGems via trusted publishing
+1. Go to the [Actions](https://github.com/naofumi-fujii/split-test-rb/actions/workflows/release.yml) tab
+2. Click "Run workflow"
+3. Select the version bump type (patch/minor/major)
+4. Click "Run workflow"
+
+The workflow will automatically update `lib/split_test_rb/version.rb`, commit it to `main`, create a git tag (`v*`), publish the gem to RubyGems via trusted publishing, and create a GitHub Release.
 
 ## License
 

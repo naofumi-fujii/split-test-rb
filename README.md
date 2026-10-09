@@ -87,11 +87,15 @@ The test directory and pattern options are useful for:
 When you have test files that take significantly longer than others, you can use `--split-by-example-threshold` to automatically split them into individual RSpec examples. This enables finer-grained load balancing across CI nodes.
 
 ```bash
+bundle exec rspec --dry-run --format json --out tmp/dry-run.json
 split-test-rb --json-path tmp/test-results \
   --node-index $CI_NODE_INDEX \
   --node-total $CI_NODE_TOTAL \
-  --split-by-example-threshold 10.0
+  --split-by-example-threshold 10.0 \
+  --dry-run-json tmp/dry-run.json
 ```
+
+`--dry-run-json` is recommended together with this option. Without it, examples missing from the cached JSON are not run (see [Keeping heavy files up to date with `--dry-run-json`](#keeping-heavy-files-up-to-date-with---dry-run-json)).
 
 With this option:
 - Files with execution time **below** the threshold are distributed as whole files (e.g., `spec/fast_spec.rb`)
@@ -106,21 +110,14 @@ This is useful when:
 
 #### Keeping heavy files up to date with `--dry-run-json`
 
-By default, heavy files are assigned only by the example IDs found in the cached JSON reports. Examples that are not in the cache are not assigned to any node:
+Without `--dry-run-json`, heavy files are assigned only by the example IDs found in the cached JSON reports, and a warning is printed. Examples that are not in the cache are not assigned to any node:
 
 - Examples newly added to a heavy file
 - Examples whose IDs shifted because other examples were inserted or moved (RSpec example IDs are position based, e.g. `[1:2:1]`)
 
-Pass the output of `rspec --dry-run --format json` to use the examples that currently exist:
+Pass the output of `rspec --dry-run --format json` to use the examples that currently exist (see the example above).
 
-```bash
-bundle exec rspec --dry-run --format json --out tmp/dry-run.json
-split-test-rb --json-path tmp/test-results \
-  --node-index $CI_NODE_INDEX \
-  --node-total $CI_NODE_TOTAL \
-  --split-by-example-threshold 10.0 \
-  --dry-run-json tmp/dry-run.json
-```
+Every node must use a dry-run JSON with the same examples, or the nodes compute different splits and some tests are run on no node. Generating it once (e.g. in a setup job) and sharing it with all nodes as a CI artifact guarantees this, and boots the app only once instead of on every node.
 
 With this option, for each heavy file:
 - Examples in the dry-run JSON are assigned, using cached timings when available and the default timing (1.0s) otherwise

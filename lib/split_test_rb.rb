@@ -241,6 +241,7 @@ module SplitTestRb
       threshold = options[:split_by_example_threshold]
       timings = if threshold
                   current_example_ids = load_current_example_ids(options[:dry_run_json])
+                  warn_cached_examples_only(file_timings, threshold) unless current_example_ids
                   apply_example_splitting(file_timings, json_files, threshold,
                                           current_example_ids: current_example_ids, default_files: default_files)
                 else
@@ -254,6 +255,15 @@ module SplitTestRb
     def self.apply_example_splitting(file_timings, json_files, threshold, current_example_ids: nil, default_files: nil)
       ExampleSplitter.new(json_files, current_example_ids: current_example_ids, default_files: default_files)
                      .split(file_timings, threshold)
+    end
+
+    # Warns that heavy files are assigned only by the cached example IDs when --dry-run-json is not given,
+    # because examples missing from the cache (new or shifted IDs) are then not run on any node
+    def self.warn_cached_examples_only(file_timings, threshold)
+      return unless file_timings.any? { |_file, time| time >= threshold }
+
+      warn 'Warning: --dry-run-json is not given, so examples of heavy files that are not in the cached JSON ' \
+           'will not be run. Pass the output of `rspec --dry-run --format json` with --dry-run-json'
     end
 
     # Loads example IDs from an RSpec dry-run JSON report, or returns nil when no path is given

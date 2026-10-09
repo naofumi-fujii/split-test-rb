@@ -450,6 +450,56 @@ RSpec.describe SplitTestRb::CLI do
         expect(lines).not_to include('spec/heavy_spec.rb')
       end
     end
+
+    describe 'warning about examples missing from the cached JSON' do
+      def write_spec_files_and_cache
+        FileUtils.mkdir_p('spec')
+        File.write('spec/heavy_spec.rb', '# heavy spec')
+        File.write('spec/light_spec.rb', '# light spec')
+        FileUtils.mkdir_p('json_results')
+        File.write('json_results/test.json', <<~JSON)
+          {
+            "examples": [
+              {"id": "./spec/heavy_spec.rb[1:1]", "run_time": 3.0},
+              {"id": "./spec/heavy_spec.rb[1:2]", "run_time": 2.5},
+              {"id": "./spec/light_spec.rb[1:1]", "run_time": 1.0}
+            ]
+          }
+        JSON
+      end
+
+      it 'warns when there are heavy files and --dry-run-json is not given' do
+        with_temp_test_dir do
+          write_spec_files_and_cache
+
+          output = run_cli_capturing_both(['--json-path', 'json_results', '--split-by-example-threshold', '4.0'])
+
+          expect(output[:stderr]).to include('Warning: --dry-run-json is not given')
+        end
+      end
+
+      it 'does not warn when --dry-run-json is given' do
+        with_temp_test_dir do
+          write_spec_files_and_cache
+          File.write('dry_run.json', '{"examples": [{"id": "./spec/heavy_spec.rb[1:1]"}]}')
+
+          output = run_cli_capturing_both(['--json-path', 'json_results', '--split-by-example-threshold', '4.0',
+                                           '--dry-run-json', 'dry_run.json'])
+
+          expect(output[:stderr]).not_to include('--dry-run-json is not given')
+        end
+      end
+
+      it 'does not warn when there are no heavy files' do
+        with_temp_test_dir do
+          write_spec_files_and_cache
+
+          output = run_cli_capturing_both(['--json-path', 'json_results', '--split-by-example-threshold', '100.0'])
+
+          expect(output[:stderr]).not_to include('--dry-run-json is not given')
+        end
+      end
+    end
   end
 
   describe '--dry-run-json integration' do

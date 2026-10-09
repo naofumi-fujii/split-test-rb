@@ -86,5 +86,12 @@ RSpec.describe SplitTestRb::Balancer do
         expect(node[:total_time]).to eq(expected_time)
       end
     end
+
+    it 'returns the same split regardless of the input order when timings tie' do
+      tied_timings = (1..12).to_h { |i| ["spec/heavy_spec.rb[1:#{i}]", 1.0] }
+      shuffled_timings = tied_timings.to_a.shuffle(random: Random.new(42)).to_h
+
+      expect(described_class.balance(shuffled_timings, 3)).to eq(described_class.balance(tied_timings, 3))
+    end
   end
 end

@@ -121,8 +121,10 @@ module SplitTestRb
     # Distributes test files across nodes based on execution times
     # Uses greedy algorithm: assign each file to the node with lowest cumulative time
     def self.balance(timings, total_nodes)
-      # Sort files by execution time (descending) for better balance
-      sorted_files = timings.sort_by { |_file, time| -time }
+      # Sort files by execution time (descending) for better balance.
+      # Ties are broken by file name so that every node computes the same split
+      # even when the input order differs (e.g. a dry-run JSON listed in random order)
+      sorted_files = timings.sort_by { |file, time| [-time, file] }
 
       # Initialize nodes with empty arrays and zero cumulative time
       nodes = Array.new(total_nodes) { { files: [], total_time: 0 } }

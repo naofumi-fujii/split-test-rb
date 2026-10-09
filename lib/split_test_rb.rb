@@ -139,6 +139,58 @@ module SplitTestRb
     end
   end
 
+  # Splits heavy test files into individual examples for finer-grained balancing
+  # Uses current_example_ids (from `rspec --dry-run --format json`) as the source of truth when given,
+  # so that examples missing from the cached JSON (new or shifted IDs) are still assigned
+  class ExampleSplitter
+    DEFAULT_TIMING = 1.0
+
+    def initialize(json_files, current_example_ids: nil, default_files: nil)
+      @example_timings = JsonParser.parse_files_with_examples(json_files)
+      @current_example_ids = current_example_ids
+      @default_files = default_files
+    end
+
+    # Returns timings where files >= threshold are replaced by their examples
+    def split(file_timings, threshold)
+      heavy_files = file_timings.select { |_file, time| time >= threshold }
+      return file_timings if heavy_files.empty?
+
+      # Start with light files (below threshold)
+      timings = file_timings.reject { |file, _| heavy_files.key?(file) }
+      heavy_files.each { |heavy_file, file_time| timings.merge!(examples_for(heavy_file, file_time)) }
+      timings
+    end
+
+    private
+
+    def examples_for(heavy_file, file_time)
+      return cached_examples_for(heavy_file) unless @current_example_ids
+
+      ids = @current_example_ids.select { |example_id| example_of?(example_id, heavy_file) }
+      # Assign the whole file when the dry-run JSON has no examples for it, so no tests are dropped
+      return { heavy_file => file_time } if ids.empty?
+
+      ids.to_h { |example_id| [example_id, timing_for(example_id)] }
+    end
+
+    def cached_examples_for(heavy_file)
+      @example_timings.select { |example_id, _| example_of?(example_id, heavy_file) }
+    end
+
+    def timing_for(example_id)
+      return @example_timings[example_id] if @example_timings.key?(example_id)
+
+      @default_files&.add(example_id)
+      DEFAULT_TIMING
+    end
+
+    # Returns true if example_id (e.g. "spec/a_spec.rb[1:1]") belongs to file_path
+    def example_of?(example_id, file_path)
+      example_id.start_with?("#{file_path}[")
+    end
+  end
+
   # Command-line interface
   class CLI
     def self.run(argv)
@@ -186,7 +238,9 @@ module SplitTestRb
       # Apply example-level splitting if threshold is set
       threshold = options[:split_by_example_threshold]
       timings = if threshold
-                  apply_example_splitting(file_timings, json_files, threshold)
+                  current_example_ids = load_current_example_ids(options[:dry_run_json])
+                  apply_example_splitting(file_timings, json_files, threshold,
+                                          current_example_ids: current_example_ids, default_files: default_files)
                 else
                   file_timings
                 end
@@ -194,24 +248,22 @@ module SplitTestRb
       [timings, default_files, json_files]
     end
 
-    # Splits heavy files (>= threshold) into individual examples
-    def self.apply_example_splitting(file_timings, json_files, threshold)
-      heavy_files = file_timings.select { |_file, time| time >= threshold }
-      return file_timings if heavy_files.empty?
+    # Splits heavy files (>= threshold) into individual examples (delegates to ExampleSplitter)
+    def self.apply_example_splitting(file_timings, json_files, threshold, current_example_ids: nil, default_files: nil)
+      ExampleSplitter.new(json_files, current_example_ids: current_example_ids, default_files: default_files)
+                     .split(file_timings, threshold)
+    end
 
-      example_timings = JsonParser.parse_files_with_examples(json_files)
+    # Loads example IDs from an RSpec dry-run JSON report, or returns nil when no path is given
+    def self.load_current_example_ids(dry_run_json)
+      return nil unless dry_run_json
 
-      # Start with light files (below threshold)
-      timings = file_timings.reject { |file, _| heavy_files.key?(file) }
-
-      # Add individual examples from heavy files
-      heavy_files.each_key do |heavy_file|
-        example_timings.each do |example_id, time|
-          timings[example_id] = time if example_id.start_with?(heavy_file)
-        end
+      unless File.exist?(dry_run_json)
+        warn "Error: dry-run JSON not found: #{dry_run_json}"
+        exit 1
       end
 
-      timings
+      JsonParser.parse_with_examples(dry_run_json).keys
     end
 
     # Adds test files missing from JSON results with default timing (1.0s)
@@ -249,7 +301,8 @@ module SplitTestRb
       debug: false,
       test_dir: 'spec',
       test_pattern: '**/*_spec.rb',
-      split_by_example_threshold: nil
+      split_by_example_threshold: nil,
+      dry_run_json: nil
     }.freeze
 
     # Parses command-line arguments and returns options hash
@@ -284,10 +337,7 @@ module SplitTestRb
     def self.define_test_options(opts, options)
       opts.on('--test-dir DIR', 'Test directory (default: spec)') { |v| options[:test_dir] = v }
       opts.on('--test-pattern PATTERN', 'Test file pattern (default: **/*_spec.rb)') { |v| options[:test_pattern] = v }
-      opts.on('--split-by-example-threshold SECONDS', Float,
-              'Split files with execution time >= threshold into individual examples') do |v|
-        options[:split_by_example_threshold] = v
-      end
+      define_split_options(opts, options)
       opts.on('--debug', 'Show debug information') { options[:debug] = true }
       opts.on('-h', '--help', 'Show this help message') do
         puts opts
@@ -296,6 +346,18 @@ module SplitTestRb
       opts.on('-v', '--version', 'Show version') do
         puts "split-test-rb #{VERSION}"
         exit
+      end
+    end
+
+    # Defines example-level splitting related CLI options
+    def self.define_split_options(opts, options)
+      opts.on('--split-by-example-threshold SECONDS', Float,
+              'Split files with execution time >= threshold into individual examples') do |v|
+        options[:split_by_example_threshold] = v
+      end
+      opts.on('--dry-run-json PATH',
+              'RSpec JSON from `rspec --dry-run --format json`, used to list current examples of heavy files') do |v|
+        options[:dry_run_json] = v
       end
     end
 

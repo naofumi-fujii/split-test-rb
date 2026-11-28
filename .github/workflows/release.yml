@@ -34,7 +34,7 @@ jobs:
         run: ./scripts/release.sh ${{ inputs.bump }}
 
       - name: Configure trusted publishing credentials
-        uses: rubygems/configure-rubygems-credentials@v2.1.0
+        uses: rubygems/configure-rubygems-credentials@v2.2.0
 
       - name: Build gem
         run: gem build split-test-rb.gemspec
